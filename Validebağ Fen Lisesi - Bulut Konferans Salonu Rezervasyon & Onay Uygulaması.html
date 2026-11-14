@@ -1,0 +1,2777 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="theme-color" content="#0f172a">
+    <title>Validebağ Fen Lisesi | Konferans Salonu Rezervasyon &amp; Onay</title>
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts: Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- JSZip (Medya Arşivi ZIP İndirme) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <!-- SheetJS (Gerçek Excel .xlsx) -->
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js"></script>
+    <!-- html2pdf.js (PDF Rapor) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f1f5f9;
+            -webkit-tap-highlight-color: transparent;
+        }
+        /* Mobil alt bar güvenli alan desteği */
+        .pb-safe {
+            padding-bottom: calc(4.75rem + env(safe-area-inset-bottom, 0px));
+        }
+        .bottom-nav-safe {
+            padding-bottom: env(safe-area-inset-bottom, 0px);
+        }
+        /* Kaydırma çubukları */
+        ::-webkit-scrollbar {
+            width: 5px;
+            height: 5px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 9999px;
+        }
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .no-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+        .slot-card {
+            transition: transform 0.18s ease, box-shadow 0.18s ease;
+        }
+        .slot-card:active {
+            transform: scale(0.985);
+        }
+
+        @media print {
+            body {
+                background: #ffffff !important;
+                padding-bottom: 0 !important;
+            }
+            header, aside, nav, .no-print, #toast-container, #reservation-modal, #detail-modal, #admin-pin-modal, #lightbox-modal, #onboarding-modal {
+                display: none !important;
+            }
+            main {
+                margin: 0 !important;
+                padding: 0 !important;
+                max-width: 100% !important;
+            }
+            #view-schedule, #view-approvals {
+                display: none !important;
+            }
+            #view-reports {
+                display: block !important;
+            }
+            #print-official-header, #print-official-footer {
+                display: block !important;
+            }
+        }
+    </style>
+</head>
+<body class="text-slate-800 antialiased min-h-screen flex flex-col pb-safe lg:pb-0">
+
+    <!-- ========================================================= -->
+    <!-- KULLANICI KARŞILAMA / ROL SEÇİM EKRANI (ONBOARDING)       -->
+    <!-- ========================================================= -->
+    <div id="onboarding-modal" class="fixed inset-0 z-[70] hidden bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4">
+        <div class="bg-white w-full max-w-md rounded-3xl shadow-2xl border border-slate-200 overflow-hidden">
+            <div class="bg-slate-900 px-6 py-6 text-white text-center relative">
+                <div class="w-14 h-14 bg-blue-600 rounded-2xl flex items-center justify-center mx-auto mb-3 shadow-lg shadow-blue-600/40">
+                    <i data-lucide="landmark" class="w-7 h-7 text-white"></i>
+                </div>
+                <span class="text-[11px] font-bold uppercase tracking-widest text-blue-300">Validebağ Fen Lisesi</span>
+                <h2 class="text-xl font-extrabold mt-1">Konferans Salonu Sistemi</h2>
+                <p class="text-xs text-slate-300 mt-1">Tüm cihazlarda anlık senkronize rezervasyon ve onay platformu</p>
+            </div>
+
+            <div class="p-6 space-y-5">
+                <!-- Öğretmen Girişi -->
+                <div class="space-y-2.5">
+                    <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider">Öğretmen / Talep Eden Olarak Devam Et</label>
+                    <input type="text" id="onboard-teacher-name" placeholder="Adınız Soyadınız ve Branşınız (Örn: Dr. Selin Kaya - Biyoloji)" class="w-full px-4 py-3 text-sm bg-slate-50 border border-slate-200 rounded-2xl focus:outline-none focus:border-blue-600">
+                    <button type="button" onclick="completeOnboardingAsTeacher()" class="w-full py-3.5 px-4 bg-blue-600 hover:bg-blue-700 active:scale-[0.99] text-white text-sm font-bold rounded-2xl shadow-lg shadow-blue-600/25 flex items-center justify-center gap-2 transition-all">
+                        <i data-lucide="graduation-cap" class="w-5 h-5"></i>
+                        <span>Öğretmen Olarak Giriş Yap</span>
+                    </button>
+                </div>
+
+                <div class="relative flex py-1 items-center">
+                    <div class="flex-grow border-t border-slate-200"></div>
+                    <span class="flex-shrink mx-3 text-[11px] font-bold uppercase text-slate-400">veya Yönetici Girişi</span>
+                    <div class="flex-grow border-t border-slate-200"></div>
+                </div>
+
+                <!-- Yönetici Girişi -->
+                <div class="p-4 rounded-2xl bg-amber-50/80 border border-amber-200 space-y-2.5">
+                    <div class="flex items-center justify-between">
+                        <span class="text-xs font-bold text-amber-900 flex items-center gap-1.5">
+                            <i data-lucide="shield-check" class="w-4 h-4 text-amber-600"></i>
+                            Yönetici / Müdür Yardımcısı
+                        </span>
+                        <span class="text-[11px] font-semibold text-amber-700">PIN: 1234</span>
+                    </div>
+                    <div class="flex gap-2">
+                        <input type="password" id="onboard-admin-pin" maxlength="8" placeholder="Yönetici PIN" class="w-32 px-3 py-2.5 text-center text-sm font-bold tracking-widest bg-white border border-amber-200 rounded-xl focus:outline-none focus:border-amber-500">
+                        <button type="button" onclick="completeOnboardingAsAdmin()" class="flex-1 py-2.5 px-3 bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold rounded-xl shadow transition-colors">
+                            Admin Girişi (Kemal ŞİRİN)
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========================================================= -->
+    <!-- ÜST UYGULAMA BAŞLIĞI (MOBİL + MASAÜSTÜ UYUMLU)             -->
+    <!-- ========================================================= -->
+    <header class="bg-slate-900 text-white sticky top-0 z-30 border-b border-slate-800 shadow-md">
+        <div class="max-w-[1440px] mx-auto px-3.5 sm:px-6 py-2.5 sm:py-3">
+            <div class="flex items-center justify-between gap-2">
+                <!-- Sol: Kurum & Bulut Durumu -->
+                <div class="flex items-center gap-2.5 min-w-0">
+                    <div class="bg-blue-600 p-2 rounded-xl shadow-md shadow-blue-600/30 shrink-0">
+                        <i data-lucide="landmark" class="w-5 h-5 text-white"></i>
+                    </div>
+                    <div class="min-w-0">
+                        <div class="flex items-center gap-1.5">
+                            <span class="text-[10px] sm:text-[11px] font-extrabold uppercase tracking-wider text-blue-300 truncate">
+                                Validebağ Fen Lisesi
+                            </span>
+                            <span id="cloud-sync-badge" class="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 shrink-0">
+                                <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                                <span id="cloud-sync-text">Bulut Canlı</span>
+                            </span>
+                        </div>
+                        <h1 class="text-sm sm:text-base font-bold text-white truncate">
+                            Konferans Salonu Takvimi
+                        </h1>
+                    </div>
+                </div>
+
+                <!-- Sağ: Paylaşım + Rol Değiştirici -->
+                <div class="flex items-center gap-1.5 sm:gap-2.5 shrink-0">
+                    <!-- WhatsApp / Bağlantı Paylaş -->
+                    <button onclick="shareAppLink()" class="p-2 sm:px-3 sm:py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-emerald-300 border border-slate-700 flex items-center gap-1.5 text-xs font-semibold transition-colors" title="Uygulama Bağlantısını Paylaş">
+                        <i data-lucide="share-2" class="w-4 h-4"></i>
+                        <span class="hidden md:inline">Bağlantıyı Paylaş</span>
+                    </button>
+
+                    <!-- Rol Anahtarı -->
+                    <div class="inline-flex p-0.5 sm:p-1 bg-slate-800 border border-slate-700 rounded-xl">
+                        <button id="btn-role-teacher" onclick="switchRole('teacher')" class="px-2.5 py-1.5 text-[11px] sm:text-xs font-bold rounded-lg bg-blue-600 text-white transition-all">
+                            Öğretmen
+                        </button>
+                        <button id="btn-role-admin" onclick="requestAdminAccess()" class="inline-flex items-center gap-1 px-2.5 py-1.5 text-[11px] sm:text-xs font-bold rounded-lg text-slate-300 hover:text-white transition-all">
+                            <span>Admin</span>
+                            <span id="header-pending-badge" class="hidden px-1.5 py-0.2 text-[10px] font-extrabold bg-amber-500 text-slate-950 rounded-full">0</span>
+                        </button>
+                    </div>
+
+                    <!-- Masaüstü Yeni Talep Butonu -->
+                    <button onclick="openModal()" class="hidden lg:inline-flex items-center gap-1.5 px-4 py-2 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-500 rounded-xl shadow-md shadow-emerald-600/20 transition-all">
+                        <i data-lucide="plus-circle" class="w-4 h-4"></i>
+                        <span id="desktop-new-btn-text">Yeni Talep Oluştur</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Aktif Kullanıcı Bilgi Çubuğu -->
+            <div class="mt-2 pt-2 border-t border-slate-800/80 flex items-center justify-between gap-2 text-[11px]">
+                <div class="flex items-center gap-1.5 min-w-0">
+                    <i data-lucide="user-circle-2" class="w-3.5 h-3.5 text-blue-400 shrink-0"></i>
+                    <span class="text-slate-400 shrink-0">Aktif Kullanıcı:</span>
+                    <input type="text" id="active-user-input" onchange="updateActiveUserName(this.value)" class="bg-transparent font-bold text-white focus:outline-none focus:underline truncate max-w-[180px] sm:max-w-xs" placeholder="Adınız Soyadınız">
+                </div>
+                <div class="flex items-center gap-2 shrink-0">
+                    <span id="role-indicator-text" class="text-slate-400 hidden sm:inline">Talepler yönetici onayına düşer</span>
+                    <button id="btn-admin-settings" onclick="openAdminSettingsModal()" class="hidden text-amber-300 hover:text-amber-200 font-semibold flex items-center gap-1">
+                        <i data-lucide="settings" class="w-3.5 h-3.5"></i><span>Ayarlar</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- ========================================================= -->
+    <!-- ANA ÇALIŞMA ALANI (MASAÜSTÜ 3 SÜTUN / MOBİL TAM EKRAN)    -->
+    <!-- ========================================================= -->
+    <div class="flex-1 max-w-[1440px] w-full mx-auto flex flex-col lg:flex-row">
+
+        <!-- MASAÜSTÜ SOL NAVİGASYON KENAR ÇUBUĞU (SIDEBAR) -->
+        <aside class="no-print hidden lg:flex lg:w-64 xl:w-72 shrink-0 flex-col justify-between bg-white border-r border-slate-200 p-4 space-y-6">
+            <div class="space-y-6">
+                <!-- Menü Bağlantıları -->
+                <nav class="space-y-1.5">
+                    <p class="px-3 text-[10px] font-extrabold uppercase tracking-wider text-slate-400 mb-2">Menü</p>
+                    <button id="side-tab-schedule" onclick="switchView('schedule')" class="w-full flex items-center justify-between px-3.5 py-2.5 text-sm font-bold rounded-xl bg-blue-50 text-blue-700 transition-colors">
+                        <span class="flex items-center gap-2.5"><i data-lucide="calendar-days" class="w-4 h-4"></i> Ders Programı</span>
+                    </button>
+                    <button id="side-tab-approvals" onclick="switchView('approvals')" class="w-full flex items-center justify-between px-3.5 py-2.5 text-sm font-semibold rounded-xl text-slate-600 hover:bg-slate-50 transition-colors">
+                        <span class="flex items-center gap-2.5"><i data-lucide="shield-check" class="w-4 h-4 text-amber-600"></i> <span id="side-approvals-label">Talepler &amp; Onaylar</span></span>
+                        <span id="side-pending-badge" class="hidden px-2 py-0.5 text-[11px] font-extrabold bg-amber-500 text-white rounded-full">0</span>
+                    </button>
+                    <button id="side-tab-reports" onclick="switchView('reports')" class="w-full flex items-center justify-between px-3.5 py-2.5 text-sm font-semibold rounded-xl text-slate-600 hover:bg-slate-50 transition-colors">
+                        <span class="flex items-center gap-2.5"><i data-lucide="folder-archive" class="w-4 h-4 text-indigo-600"></i> Arşiv &amp; Raporlar</span>
+                        <span id="side-media-badge" class="px-2 py-0.5 text-[11px] font-bold bg-slate-100 text-slate-600 rounded-full">0</span>
+                    </button>
+                </nav>
+
+                <!-- Özet İstatistikler -->
+                <div class="p-4 rounded-2xl bg-slate-50 border border-slate-200/80 space-y-3">
+                    <p class="text-[11px] font-extrabold uppercase tracking-wider text-slate-400">Canlı Salon Özeti</p>
+                    <div class="grid grid-cols-2 gap-2.5">
+                        <div class="bg-white p-2.5 rounded-xl border border-slate-200/70">
+                            <span class="text-[10px] font-semibold text-emerald-600 block">Onaylı</span>
+                            <span id="desk-stat-approved" class="text-lg font-extrabold text-slate-900">0</span>
+                        </div>
+                        <div class="bg-white p-2.5 rounded-xl border border-slate-200/70">
+                            <span class="text-[10px] font-semibold text-amber-600 block">Bekleyen</span>
+                            <span id="desk-stat-pending" class="text-lg font-extrabold text-amber-600">0</span>
+                        </div>
+                        <div class="bg-white p-2.5 rounded-xl border border-slate-200/70">
+                            <span class="text-[10px] font-semibold text-blue-600 block">Ders Saati</span>
+                            <span id="desk-stat-hours" class="text-lg font-extrabold text-slate-900">0</span>
+                        </div>
+                        <div class="bg-white p-2.5 rounded-xl border border-slate-200/70">
+                            <span class="text-[10px] font-semibold text-indigo-600 block">Medya</span>
+                            <span id="desk-stat-media" class="text-lg font-extrabold text-slate-900">0</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Renk Açıklamaları -->
+            <div class="p-3.5 rounded-2xl bg-slate-900 text-white space-y-2 text-xs">
+                <p class="font-bold text-slate-300 text-[11px] uppercase">Durum Göstergeleri</p>
+                <div class="flex items-center gap-2"><span class="w-2.5 h-2.5 rounded-full bg-emerald-400"></span> Onaylanmış Etkinlik</div>
+                <div class="flex items-center gap-2"><span class="w-2.5 h-2.5 rounded-full bg-amber-400"></span> Yönetici Onayı Bekliyor</div>
+                <div class="flex items-center gap-2"><span class="w-2.5 h-2.5 rounded-full bg-slate-500"></span> Müsait (Tıkla &amp; Talep Et)</div>
+            </div>
+        </aside>
+
+        <!-- ORTA ANA İÇERİK ALANI -->
+        <main class="flex-1 min-w-0 p-3 sm:p-5 lg:p-6 space-y-4">
+
+            <!-- ===================================================== -->
+            <!-- GÖRÜNÜM 1: DERS PROGRAMI (MOBİL GÜN ŞERİDİ + MATRİS)  -->
+            <!-- ===================================================== -->
+            <section id="view-schedule" class="space-y-3 sm:space-y-4">
+
+                <!-- Hafta Gezinme Barı -->
+                <div class="bg-white p-2.5 sm:p-3.5 rounded-2xl border border-slate-200/90 shadow-sm flex items-center justify-between gap-2">
+                    <button onclick="changeWeek(-1)" class="p-2 rounded-xl hover:bg-slate-100 active:bg-slate-200 text-slate-600 transition-colors" aria-label="Önceki Hafta">
+                        <i data-lucide="chevron-left" class="w-5 h-5"></i>
+                    </button>
+
+                    <div class="flex items-center gap-2 text-center">
+                        <span id="current-week-label" class="text-xs sm:text-sm font-extrabold text-slate-900">Hafta Yükleniyor...</span>
+                        <button onclick="goToToday()" class="px-2.5 py-1 text-[11px] font-bold text-blue-700 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors">
+                            Bugün
+                        </button>
+                    </div>
+
+                    <button onclick="changeWeek(1)" class="p-2 rounded-xl hover:bg-slate-100 active:bg-slate-200 text-slate-600 transition-colors" aria-label="Sonraki Hafta">
+                        <i data-lucide="chevron-right" class="w-5 h-5"></i>
+                    </button>
+                </div>
+
+                <!-- MOBİL TELEFON YATAY HAFTALIK GÜN/TARİH ŞERİDİ (Paylaşılan Görseldeki Gibi) -->
+                <div class="lg:hidden bg-white p-2.5 rounded-2xl border border-slate-200/90 shadow-sm">
+                    <div id="mobile-day-strip" class="grid grid-cols-7 gap-1 text-center"></div>
+                </div>
+
+                <!-- MOBİL TELEFON TEK GÜNLÜK DERS PROGRAMI LİSTESİ (Kendi Ekran Görüntünüzdeki Akış) -->
+                <div id="mobile-daily-schedule" class="lg:hidden bg-white rounded-2xl border border-slate-200/90 shadow-sm divide-y divide-slate-200/80 overflow-hidden"></div>
+
+                <!-- MASAÜSTÜ GENİŞ HAFTALIK MATRİS TABLOSU -->
+                <div class="hidden lg:block bg-white rounded-2xl border border-slate-200/90 shadow-sm overflow-hidden">
+                    <div class="overflow-x-auto">
+                        <table class="w-full border-collapse min-w-[960px]">
+                            <thead>
+                                <tr id="schedule-table-head" class="bg-slate-50 border-b border-slate-200"></tr>
+                            </thead>
+                            <tbody id="schedule-table-body" class="divide-y divide-slate-200/80"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ===================================================== -->
+            <!-- GÖRÜNÜM 2: TALEPLER & YÖNETİCİ ONAY MERKEZİ           -->
+            <!-- ===================================================== -->
+            <section id="view-approvals" class="hidden space-y-4">
+                <!-- Üst Filtre ve Durum Şeridi -->
+                <div class="bg-white p-4 rounded-2xl border border-slate-200/90 shadow-sm space-y-3">
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                        <div>
+                            <h2 id="approvals-heading" class="text-base sm:text-lg font-extrabold text-slate-900">Salon Talepleri ve Onay Akışı</h2>
+                            <p id="approvals-subheading" class="text-xs text-slate-500">Oluşturulan tüm taleplerin onay durumlarını ve yönetici notlarını takip edin.</p>
+                        </div>
+                        <div class="flex gap-1.5">
+                            <button onclick="setApprovalFilter('Onay Bekliyor')" id="pill-filter-pending" class="px-3 py-1.5 text-xs font-bold rounded-xl bg-amber-100 text-amber-800 border border-amber-200">
+                                Bekleyenler (<span id="pill-count-pending">0</span>)
+                            </button>
+                            <button onclick="setApprovalFilter('ALL')" id="pill-filter-all" class="px-3 py-1.5 text-xs font-bold rounded-xl bg-slate-100 text-slate-700">
+                                Tümü
+                            </button>
+                            <button onclick="setApprovalFilter('Onaylandı')" id="pill-filter-approved" class="px-3 py-1.5 text-xs font-bold rounded-xl bg-slate-100 text-slate-700">
+                                Onaylı
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="relative">
+                        <i data-lucide="search" class="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2"></i>
+                        <input type="text" id="filter-search" oninput="renderApprovalsView()" placeholder="Etkinlik adı, öğretmen veya ekipman ara..." class="w-full pl-10 pr-4 py-2.5 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-blue-500">
+                    </div>
+                </div>
+
+                <div id="approvals-list-container" class="space-y-3"></div>
+            </section>
+
+            <!-- ===================================================== -->
+            <!-- GÖRÜNÜM 3: RAPORLAMA (EXCEL/WORD/PDF) & MEDYA ARŞİVİ  -->
+            <!-- ===================================================== -->
+            <section id="view-reports" class="hidden space-y-5">
+
+                <!-- Resmi Yazdırma / PDF Anteti -->
+                <div id="print-official-header" class="hidden border-b-2 border-slate-900 pb-4 mb-5">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-xs font-bold uppercase tracking-widest text-slate-600">T.C. MİLLÎ EĞİTİM BAKANLIĞI</p>
+                            <h2 class="text-xl font-extrabold text-slate-900 mt-0.5">VALİDEBAĞ FEN LİSESİ MÜDÜRLÜĞÜ</h2>
+                            <p class="text-sm font-semibold text-slate-700">Konferans Salonu Kullanım, Onay ve Etkinlik Raporu</p>
+                        </div>
+                        <div class="text-right text-xs text-slate-600">
+                            <p class="font-bold">Rapor Tarihi:</p>
+                            <p id="print-date-stamp"></p>
+                            <p id="print-range-stamp" class="font-semibold text-slate-800 mt-0.5"></p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Rapor Filtreleri ve Dışa Aktarma Butonları -->
+                <div class="no-print bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/90 shadow-sm space-y-4">
+                    <div class="flex flex-col md:flex-row md:items-center justify-between gap-3 border-b border-slate-100 pb-3.5">
+                        <div>
+                            <h2 class="text-base sm:text-lg font-extrabold text-slate-900 flex items-center gap-2">
+                                <i data-lucide="file-bar-chart-2" class="w-5 h-5 text-blue-600"></i>
+                                <span>Etkinlik Raporlama ve Resmi Çıktılar</span>
+                            </h2>
+                            <p class="text-xs text-slate-500 mt-0.5">Gün, hafta, ay veya özel tarih aralığı seçerek Excel, Word veya PDF raporu alın.</p>
+                        </div>
+
+                        <div class="grid grid-cols-3 sm:flex items-center gap-2">
+                            <button onclick="exportToExcelXLSX()" class="inline-flex items-center justify-center gap-1.5 px-3 py-2.5 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl shadow-sm transition-all">
+                                <i data-lucide="sheet" class="w-4 h-4"></i>
+                                <span>Excel (.xlsx)</span>
+                            </button>
+                            <button onclick="exportToWordDOC()" class="inline-flex items-center justify-center gap-1.5 px-3 py-2.5 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-xl shadow-sm transition-all">
+                                <i data-lucide="file-text" class="w-4 h-4"></i>
+                                <span>Word (.doc)</span>
+                            </button>
+                            <button onclick="exportToPDF()" class="inline-flex items-center justify-center gap-1.5 px-3 py-2.5 text-xs font-bold text-white bg-rose-600 hover:bg-rose-700 rounded-xl shadow-sm transition-all">
+                                <i data-lucide="file-down" class="w-4 h-4"></i>
+                                <span>PDF İndir</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Hızlı Zaman Dilimi Butonları -->
+                    <div class="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-1">
+                        <button type="button" onclick="applyReportPreset('today')" class="shrink-0 px-3 py-1.5 text-xs font-bold bg-slate-100 hover:bg-blue-50 text-slate-700 hover:text-blue-700 rounded-xl">Bugün</button>
+                        <button type="button" onclick="applyReportPreset('week')" class="shrink-0 px-3 py-1.5 text-xs font-bold bg-slate-100 hover:bg-blue-50 text-slate-700 hover:text-blue-700 rounded-xl">Bu Hafta</button>
+                        <button type="button" onclick="applyReportPreset('month')" class="shrink-0 px-3 py-1.5 text-xs font-bold bg-slate-100 hover:bg-blue-50 text-slate-700 hover:text-blue-700 rounded-xl">Bu Ay</button>
+                        <button type="button" onclick="applyReportPreset('year')" class="shrink-0 px-3 py-1.5 text-xs font-bold bg-slate-100 hover:bg-blue-50 text-slate-700 hover:text-blue-700 rounded-xl">Tüm Dönem</button>
+                        <button type="button" onclick="applyReportPreset('all')" class="shrink-0 px-3 py-1.5 text-xs font-bold bg-blue-50 text-blue-700 border border-blue-200 rounded-xl">Tümü</button>
+                    </div>
+
+                    <!-- Tarih ve Durum Filtreleri -->
+                    <div class="grid grid-cols-2 lg:grid-cols-4 gap-2.5">
+                        <div>
+                            <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Başlangıç</label>
+                            <input type="date" id="rep-date-start" onchange="renderReportsView()" class="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl">
+                        </div>
+                        <div>
+                            <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Bitiş</label>
+                            <input type="date" id="rep-date-end" onchange="renderReportsView()" class="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl">
+                        </div>
+                        <div>
+                            <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Onay Durumu</label>
+                            <select id="rep-status" onchange="renderReportsView()" class="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl">
+                                <option value="ALL">Tümü</option>
+                                <option value="Onaylandı">Onaylandı</option>
+                                <option value="Onay Bekliyor">Onay Bekliyor</option>
+                                <option value="Reddedildi">Reddedildi</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Etkinlik Türü</label>
+                            <select id="rep-purpose" onchange="renderReportsView()" class="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl">
+                                <option value="ALL">Tüm Türler</option>
+                                <option value="Seminer / Konferans">Seminer / Konferans</option>
+                                <option value="Tiyatro / Gösteri">Tiyatro / Gösteri</option>
+                                <option value="Müzik / Dinleti">Müzik / Dinleti</option>
+                                <option value="Kulüp Toplantısı">Kulüp Toplantısı</option>
+                                <option value="Veli Toplantısı">Veli Toplantısı</option>
+                                <option value="Sınav / Deneme">Sınav / Deneme</option>
+                                <option value="Zümre / Öğretmenler Kurulu">Zümre / Öğretmenler Kurulu</option>
+                                <option value="Tören / Anma Programı">Tören / Anma Programı</option>
+                                <option value="Diğer">Diğer</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- PDF / Yazdırma Rapor Alanı -->
+                <div id="pdf-export-area" class="space-y-4">
+                    <!-- KPI Özet Kartları -->
+                    <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                        <div class="bg-white p-3.5 rounded-2xl border border-slate-200 shadow-sm">
+                            <span class="text-[11px] font-semibold text-slate-500">Etkinlik Sayısı</span>
+                            <p id="rep-kpi-events" class="text-xl font-extrabold text-slate-900 mt-0.5">0</p>
+                        </div>
+                        <div class="bg-white p-3.5 rounded-2xl border border-emerald-200 shadow-sm">
+                            <span class="text-[11px] font-semibold text-emerald-600">Onaylanan</span>
+                            <p id="rep-kpi-approved" class="text-xl font-extrabold text-emerald-700 mt-0.5">0</p>
+                        </div>
+                        <div class="bg-white p-3.5 rounded-2xl border border-slate-200 shadow-sm">
+                            <span class="text-[11px] font-semibold text-blue-600">Toplam Ders Saati</span>
+                            <p id="rep-kpi-hours" class="text-xl font-extrabold text-blue-700 mt-0.5">0</p>
+                        </div>
+                        <div class="bg-white p-3.5 rounded-2xl border border-slate-200 shadow-sm">
+                            <span class="text-[11px] font-semibold text-indigo-600">Toplam Katılımcı</span>
+                            <p id="rep-kpi-participants" class="text-xl font-extrabold text-slate-900 mt-0.5">0</p>
+                        </div>
+                    </div>
+
+                    <!-- Rapor Tablosu -->
+                    <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+                        <div class="px-4 py-3 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
+                            <div>
+                                <h3 class="text-xs sm:text-sm font-bold text-slate-900">Etkinlik ve Kullanım Dökümü</h3>
+                                <p id="rep-active-range-label" class="text-[11px] text-slate-500"></p>
+                            </div>
+                            <span id="rep-table-count" class="text-xs font-bold text-slate-600">0 Kayıt</span>
+                        </div>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left border-collapse text-xs">
+                                <thead>
+                                    <tr class="bg-slate-50/70 border-b border-slate-200 text-slate-600 uppercase">
+                                        <th class="py-2.5 px-3 font-bold">Tarih / Gün</th>
+                                        <th class="py-2.5 px-3 font-bold">Ders Saatleri</th>
+                                        <th class="py-2.5 px-3 font-bold">Etkinlik &amp; Tür</th>
+                                        <th class="py-2.5 px-3 font-bold">Sorumlu Öğretmen</th>
+                                        <th class="py-2.5 px-3 font-bold text-center">Kişi</th>
+                                        <th class="py-2.5 px-3 font-bold">Durum &amp; Karar</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="rep-summary-tbody" class="divide-y divide-slate-200/80"></tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Resmi İmza Bloğu -->
+                    <div id="print-official-footer" class="hidden pt-8 mt-6 border-t border-slate-300 grid grid-cols-2 gap-8 text-center text-xs">
+                        <div>
+                            <p class="font-bold text-slate-800">Raporu Düzenleyen</p>
+                            <p id="print-preparer-name" class="text-slate-600 mt-1"></p>
+                            <p class="text-slate-400 mt-8">İmza</p>
+                        </div>
+                        <div>
+                            <p class="font-bold text-slate-800">TASDİK OLUNUR</p>
+                            <p class="text-slate-600 mt-1">Okul Müdürü / Müdür Yardımcısı</p>
+                            <p class="text-slate-400 mt-8">Mühür ve İmza</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- BULUT MEDYA ARŞİVİ VE TOPLU ZIP İNDİRME -->
+                <div class="no-print bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/90 shadow-sm space-y-4">
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-3.5">
+                        <div>
+                            <h2 class="text-base font-extrabold text-slate-900 flex items-center gap-2">
+                                <i data-lucide="images" class="w-5 h-5 text-amber-500"></i>
+                                <span>Etkinlik Görsel &amp; Video Arşivi (<span id="archive-total-count">0</span>)</span>
+                            </h2>
+                            <p class="text-xs text-slate-500 mt-0.5">Tüm cihazlardan yüklenen etkinlik fotoğrafları ve videoları klasörlü ZIP olarak indirebilirsiniz.</p>
+                        </div>
+                        <button id="btn-download-zip" onclick="downloadAllArchiveAsZip()" class="inline-flex items-center justify-center gap-2 px-4 py-2.5 text-xs font-bold text-white bg-slate-900 hover:bg-slate-800 rounded-xl shadow transition-all">
+                            <i data-lucide="download-cloud" class="w-4 h-4 text-amber-400"></i>
+                            <span>Tüm Görselleri ZIP Olarak Arşivle</span>
+                        </button>
+                    </div>
+
+                    <div id="archive-gallery-container" class="space-y-4"></div>
+                </div>
+            </section>
+
+        </main>
+
+        <!-- MASAÜSTÜ SAĞ CANLI ONAY & BİLDİRİM ÇEKMECESİ (ADMIN DRAWER) -->
+        <aside id="desktop-right-drawer" class="no-print hidden xl:flex xl:w-80 shrink-0 flex-col bg-white border-l border-slate-200 p-4 space-y-4">
+            <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+                <div class="flex items-center gap-2">
+                    <span class="p-1.5 rounded-lg bg-amber-100 text-amber-700">
+                        <i data-lucide="bell-ring" class="w-4 h-4"></i>
+                    </span>
+                    <div>
+                        <h3 class="text-xs font-extrabold uppercase tracking-wider text-slate-900">Canlı Onay Akışı</h3>
+                        <p class="text-[11px] text-slate-500">Anlık senkronize talepler</p>
+                    </div>
+                </div>
+                <span id="drawer-pending-count" class="px-2 py-0.5 text-xs font-extrabold bg-amber-500 text-white rounded-full">0</span>
+            </div>
+
+            <div id="desktop-drawer-list" class="flex-1 overflow-y-auto space-y-3 pr-1"></div>
+        </aside>
+
+    </div>
+
+    <!-- ========================================================= -->
+    <!-- MOBİL ALT SABİT NAVİGASYON BARI (BOTTOM TAB BAR)          -->
+    <!-- ========================================================= -->
+    <nav class="no-print lg:hidden fixed bottom-0 inset-x-0 z-30 bg-white/95 backdrop-blur-md border-t border-slate-200 bottom-nav-safe shadow-[0_-4px_20px_rgba(15,23,42,0.06)]">
+        <div class="grid grid-cols-4 h-16 max-w-lg mx-auto">
+            <!-- 1. Program -->
+            <button id="mob-tab-schedule" onclick="switchView('schedule')" class="flex flex-col items-center justify-center gap-1 text-blue-600 font-bold transition-colors">
+                <i data-lucide="calendar-days" class="w-5 h-5"></i>
+                <span class="text-[11px]">Program</span>
+            </button>
+
+            <!-- 2. Talep Oluştur (+) -->
+            <button onclick="openModal()" class="flex flex-col items-center justify-center gap-0.5 text-slate-700 active:scale-95 transition-transform">
+                <div class="w-10 h-10 -mt-3 rounded-2xl bg-blue-600 text-white flex items-center justify-center shadow-lg shadow-blue-600/35 border-2 border-white">
+                    <i data-lucide="plus" class="w-6 h-6"></i>
+                </div>
+                <span class="text-[11px] font-bold text-blue-700">Talep Ekle</span>
+            </button>
+
+            <!-- 3. Onaylar (Rozetli) -->
+            <button id="mob-tab-approvals" onclick="switchView('approvals')" class="relative flex flex-col items-center justify-center gap-1 text-slate-500 font-medium transition-colors">
+                <div class="relative">
+                    <i data-lucide="shield-check" class="w-5 h-5"></i>
+                    <span id="mob-pending-badge" class="hidden absolute -top-1.5 -right-2.5 px-1.5 py-0.2 text-[10px] font-extrabold bg-amber-500 text-slate-950 rounded-full border border-white">0</span>
+                </div>
+                <span id="mob-approvals-label" class="text-[11px]">Talepler</span>
+            </button>
+
+            <!-- 4. Arşiv & Rapor -->
+            <button id="mob-tab-reports" onclick="switchView('reports')" class="flex flex-col items-center justify-center gap-1 text-slate-500 font-medium transition-colors">
+                <i data-lucide="folder-archive" class="w-5 h-5"></i>
+                <span class="text-[11px]">Arşiv &amp; Rapor</span>
+            </button>
+        </div>
+    </nav>
+
+    <!-- ========================================================= -->
+    <!-- MODAL 1: YENİ TALEP / ÇOKLU DERS SAATİ SEÇİMİ             -->
+    <!-- ========================================================= -->
+    <div id="reservation-modal" class="fixed inset-0 z-50 hidden overflow-y-auto bg-slate-900/70 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4">
+        <div class="bg-white w-full max-w-2xl rounded-t-3xl sm:rounded-3xl shadow-2xl border border-slate-200 overflow-hidden max-h-[92vh] flex flex-col">
+            <!-- Modal Header -->
+            <div class="px-5 py-4 bg-slate-900 text-white flex items-center justify-between shrink-0">
+                <div>
+                    <h3 id="modal-title" class="text-base font-extrabold">Salon Rezervasyon Talebi</h3>
+                    <p id="modal-subtitle" class="text-[11px] text-slate-300">Birden fazla ders saatine dokunarak etkinlik süresini seçin.</p>
+                </div>
+                <button onclick="closeModal()" class="p-2 text-slate-400 hover:text-white bg-slate-800 rounded-xl">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+
+            <!-- Çakışma Uyarısı -->
+            <div id="conflict-alert" class="hidden mx-5 mt-3 p-3 bg-rose-50 border border-rose-200 rounded-2xl flex items-start gap-2.5 text-rose-800 text-xs shrink-0">
+                <i data-lucide="alert-triangle" class="w-4 h-4 text-rose-600 shrink-0 mt-0.5"></i>
+                <div>
+                    <p class="font-bold">Seçilen Saatlerde Onaylı Etkinlik Var!</p>
+                    <p id="conflict-message" class="text-[11px] mt-0.5 text-rose-700"></p>
+                </div>
+            </div>
+
+            <form id="reservation-form" onsubmit="handleFormSubmit(event)" class="p-5 space-y-4 overflow-y-auto">
+                <input type="hidden" id="edit-id">
+
+                <!-- Tarih ve Gün -->
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-[11px] font-bold text-slate-600 uppercase mb-1">Tarih *</label>
+                        <input type="date" id="form-date" required onchange="syncDayFromDate()" class="w-full px-3.5 py-2.5 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-blue-600">
+                    </div>
+                    <div>
+                        <label class="block text-[11px] font-bold text-slate-600 uppercase mb-1">Gün *</label>
+                        <select id="form-day" required onchange="checkSlotConflict()" class="w-full px-3.5 py-2.5 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-blue-600">
+                            <option value="Pazartesi">Pazartesi</option>
+                            <option value="Salı">Salı</option>
+                            <option value="Çarşamba">Çarşamba</option>
+                            <option value="Perşembe">Perşembe</option>
+                            <option value="Cuma">Cuma</option>
+                            <option value="Cumartesi">Cumartesi</option>
+                            <option value="Pazar">Pazar</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- DOKUNMATİK ÇOKLU DERS SAATİ SEÇİMİ -->
+                <div class="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 space-y-2.5">
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5">
+                        <div>
+                            <span class="text-[11px] font-extrabold text-slate-800 uppercase block">Ders Saatleri (Çoklu Dokunmatik Seçim) *</span>
+                            <span id="selected-slots-summary" class="text-xs font-bold text-blue-700">1. Ders (08:00 - 08:40)</span>
+                        </div>
+                        <div class="flex flex-wrap gap-1.5">
+                            <button type="button" onclick="selectSlotRange(['1','2','3'])" class="px-2.5 py-1 text-[11px] font-bold bg-white border border-slate-200 rounded-lg active:bg-blue-50">1-3. Ders</button>
+                            <button type="button" onclick="selectSlotRange(['1','2','3','4','5'])" class="px-2.5 py-1 text-[11px] font-bold bg-white border border-slate-200 rounded-lg active:bg-blue-50">Öğleden Önce</button>
+                            <button type="button" onclick="selectSlotRange(['6','7','8'])" class="px-2.5 py-1 text-[11px] font-bold bg-white border border-slate-200 rounded-lg active:bg-blue-50">Öğleden Sonra</button>
+                        </div>
+                    </div>
+
+                    <div id="multi-slot-grid" class="grid grid-cols-3 sm:grid-cols-5 gap-2"></div>
+                </div>
+
+                <!-- Sorumlu Öğretmen & Katılımcı -->
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <div class="sm:col-span-2">
+                        <label class="block text-[11px] font-bold text-slate-600 uppercase mb-1">Talep Eden / Sorumlu Öğretmen *</label>
+                        <input type="text" id="form-teacher" required placeholder="Ad Soyad ve Branş" class="w-full px-3.5 py-2.5 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-blue-600">
+                    </div>
+                    <div>
+                        <label class="block text-[11px] font-bold text-slate-600 uppercase mb-1">Katılımcı Sayısı *</label>
+                        <input type="number" id="form-participants" min="1" max="600" required placeholder="Örn: 120" class="w-full px-3.5 py-2.5 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-blue-600">
+                    </div>
+                </div>
+
+                <!-- Kullanım Amacı & Başlık -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-[11px] font-bold text-slate-600 uppercase mb-1">Kullanım Amacı *</label>
+                        <select id="form-purpose" required class="w-full px-3.5 py-2.5 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-blue-600">
+                            <option value="Seminer / Konferans">Seminer / Konferans</option>
+                            <option value="Tiyatro / Gösteri">Tiyatro / Gösteri</option>
+                            <option value="Müzik / Dinleti">Müzik / Dinleti</option>
+                            <option value="Kulüp Toplantısı">Kulüp Toplantısı</option>
+                            <option value="Veli Toplantısı">Veli Toplantısı</option>
+                            <option value="Sınav / Deneme">Sınav / Deneme</option>
+                            <option value="Zümre / Öğretmenler Kurulu">Zümre / Öğretmenler Kurulu</option>
+                            <option value="Tören / Anma Programı">Tören / Anma Programı</option>
+                            <option value="Diğer">Diğer</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-[11px] font-bold text-slate-600 uppercase mb-1">Etkinlik Başlığı *</label>
+                        <input type="text" id="form-title" required placeholder="Örn: TÜBİTAK 2204-A Bilim Söyleşisi" class="w-full px-3.5 py-2.5 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-blue-600">
+                    </div>
+                </div>
+
+                <!-- Admin için doğrudan durum seçici -->
+                <div id="admin-direct-status-box" class="hidden">
+                    <label class="block text-[11px] font-bold text-amber-800 uppercase mb-1">Yönetici Onay Statüsü</label>
+                    <select id="form-status" onchange="checkSlotConflict()" class="w-full px-3.5 py-2.5 text-sm bg-amber-50 border border-amber-200 rounded-xl font-bold text-slate-800">
+                        <option value="Onaylandı">Onaylandı (Doğrudan Yayınla)</option>
+                        <option value="Onay Bekliyor">Onay Bekliyor</option>
+                        <option value="Reddedildi">Reddedildi</option>
+                    </select>
+                </div>
+
+                <!-- Ekipman Seçimi -->
+                <div>
+                    <label class="block text-[11px] font-bold text-slate-600 uppercase mb-1.5">Kullanılacak Ekipmanlar</label>
+                    <div id="equipment-checkboxes" class="grid grid-cols-2 gap-2"></div>
+                </div>
+
+                <!-- Açıklama -->
+                <div>
+                    <label class="block text-[11px] font-bold text-slate-600 uppercase mb-1">Sahne / Teknik Notlar</label>
+                    <textarea id="form-notes" rows="2" placeholder="Mikrofon sayısı, sahne düzeni vb. notlar..." class="w-full px-3.5 py-2 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-blue-600"></textarea>
+                </div>
+
+                <div class="pt-3 border-t border-slate-200 flex items-center justify-end gap-2.5 pb-2">
+                    <button type="button" onclick="closeModal()" class="px-4 py-2.5 text-xs font-bold text-slate-600 bg-slate-100 rounded-xl">Vazgeç</button>
+                    <button type="submit" id="btn-submit-reservation" class="flex-1 sm:flex-none px-6 py-3 text-xs sm:text-sm font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-xl shadow-lg shadow-blue-600/25">
+                        Talebi Onaya Gönder
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- ========================================================= -->
+    <!-- MODAL 2: ETKİNLİK DETAYI, KARŞILIKLI MESAJ & KAMERA/GALERİ -->
+    <!-- ========================================================= -->
+    <div id="detail-modal" class="fixed inset-0 z-50 hidden overflow-y-auto bg-slate-900/70 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4">
+        <div class="bg-white w-full max-w-2xl rounded-t-3xl sm:rounded-3xl shadow-2xl border border-slate-200 overflow-hidden max-h-[92vh] flex flex-col">
+            <div id="detail-modal-content" class="flex flex-col overflow-hidden max-h-[92vh]"></div>
+        </div>
+    </div>
+
+    <!-- ========================================================= -->
+    <!-- MODAL 3: YÖNETİCİ PIN GİRİŞ MODALI                         -->
+    <!-- ========================================================= -->
+    <div id="admin-pin-modal" class="fixed inset-0 z-50 hidden bg-slate-900/75 backdrop-blur-sm flex items-center justify-center p-4">
+        <div class="bg-white w-full max-w-sm rounded-3xl shadow-2xl border border-slate-200 overflow-hidden">
+            <div class="px-5 py-4 bg-slate-900 text-white flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                    <i data-lucide="shield-check" class="w-5 h-5 text-amber-400"></i>
+                    <h3 class="text-sm font-bold">Yönetici (Admin) Girişi</h3>
+                </div>
+                <button onclick="closeAdminPinModal()" class="text-slate-400 hover:text-white"><i data-lucide="x" class="w-5 h-5"></i></button>
+            </div>
+            <form onsubmit="verifyAdminPin(event)" class="p-5 space-y-4">
+                <div>
+                    <label class="block text-[11px] font-bold text-slate-600 uppercase mb-1">Onay Yetkilisi</label>
+                    <select id="pin-admin-selector" class="w-full px-3.5 py-2.5 text-sm bg-slate-50 border border-slate-200 rounded-xl font-semibold"></select>
+                </div>
+                <div>
+                    <label class="block text-[11px] font-bold text-slate-600 uppercase mb-1">Yönetici PIN Kodu</label>
+                    <input type="password" id="admin-pin-input" inputmode="numeric" maxlength="8" required placeholder="••••" class="w-full px-4 py-3 text-center text-xl font-extrabold tracking-widest bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-amber-500">
+                    <p class="text-[11px] text-slate-500 mt-1.5 text-center">Varsayılan Yönetici PIN: <strong>1234</strong></p>
+                </div>
+                <div class="flex gap-2 pt-1">
+                    <button type="button" onclick="closeAdminPinModal()" class="flex-1 py-2.5 text-xs font-bold text-slate-600 bg-slate-100 rounded-xl">İptal</button>
+                    <button type="submit" class="flex-1 py-2.5 text-xs font-bold text-white bg-amber-600 hover:bg-amber-700 rounded-xl shadow">Giriş Yap</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- ========================================================= -->
+    <!-- MODAL 4: YÖNETİCİ AYARLARI                                 -->
+    <!-- ========================================================= -->
+    <div id="admin-settings-modal" class="fixed inset-0 z-50 hidden bg-slate-900/75 backdrop-blur-sm flex items-center justify-center p-4">
+        <div class="bg-white w-full max-w-md rounded-3xl shadow-2xl border border-slate-200 overflow-hidden">
+            <div class="px-5 py-4 bg-slate-900 text-white flex items-center justify-between">
+                <h3 class="text-sm font-bold flex items-center gap-2"><i data-lucide="settings" class="w-4 h-4 text-blue-400"></i> Yönetici &amp; PIN Ayarları</h3>
+                <button onclick="closeAdminSettingsModal()" class="text-slate-400 hover:text-white"><i data-lucide="x" class="w-5 h-5"></i></button>
+            </div>
+            <div class="p-5 space-y-4">
+                <div class="space-y-2">
+                    <label class="block text-[11px] font-bold text-slate-600 uppercase">Yeni Onay Yetkilisi Ekle</label>
+                    <div class="flex gap-2">
+                        <input type="text" id="new-admin-name" placeholder="Ad Soyad (Unvan)" class="flex-1 px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl">
+                        <button type="button" onclick="addNewAdminOfficer()" class="px-4 py-2 text-xs font-bold text-white bg-blue-600 rounded-xl">Ekle</button>
+                    </div>
+                </div>
+                <div id="admin-officers-list" class="space-y-1.5 max-h-36 overflow-y-auto"></div>
+                <div class="pt-3 border-t border-slate-200 space-y-2">
+                    <label class="block text-[11px] font-bold text-slate-600 uppercase">Yönetici PIN Güncelle</label>
+                    <div class="flex gap-2">
+                        <input type="text" id="update-admin-pin-input" maxlength="8" placeholder="Yeni PIN" class="flex-1 px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl">
+                        <button type="button" onclick="updateAdminPinCode()" class="px-4 py-2 text-xs font-bold text-white bg-slate-900 rounded-xl">Kaydet</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========================================================= -->
+    <!-- MODAL 5: LIGHTBOX MEDYA BÜYÜTME                           -->
+    <!-- ========================================================= -->
+    <div id="lightbox-modal" onclick="closeLightbox(event)" class="fixed inset-0 z-[60] hidden bg-slate-950/95 backdrop-blur-md flex items-center justify-center p-4">
+        <div class="relative max-w-4xl w-full flex flex-col items-center">
+            <button onclick="closeLightbox(event, true)" class="self-end mb-3 inline-flex items-center gap-1.5 px-3.5 py-2 bg-white/15 text-white text-xs font-bold rounded-xl">
+                <i data-lucide="x" class="w-4 h-4"></i> Kapat
+            </button>
+            <div id="lightbox-media-wrapper" class="w-full flex items-center justify-center rounded-2xl overflow-hidden max-h-[75vh]"></div>
+            <div id="lightbox-caption" class="mt-3 text-center text-white space-y-1"></div>
+        </div>
+    </div>
+
+    <!-- Bildirim Toast Kutusu -->
+    <div id="toast-container" class="fixed top-16 sm:top-auto sm:bottom-5 inset-x-4 sm:inset-x-auto sm:right-5 z-[80] flex flex-col gap-2 pointer-events-none"></div>
+
+    <!-- ========================================================= -->
+    <!-- FIREBASE REAL-TIME MODÜLÜ VE UYGULAMA MANTIĞI             -->
+    <!-- ========================================================= -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import {
+            getFirestore, doc, setDoc, updateDoc, deleteDoc,
+            onSnapshot, collection
+        } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // ==========================================
+        // 1. SABİTLER VE KESİN DERS SAATLERİ
+        // ==========================================
+        const TIME_SLOTS = [
+            { id: '1', label: '1. Ders', start: '08:00', end: '08:40', isBreak: false },
+            { id: '2', label: '2. Ders', start: '08:50', end: '09:30', isBreak: false },
+            { id: '3', label: '3. Ders', start: '09:40', end: '10:20', isBreak: false },
+            { id: '4', label: '4. Ders', start: '10:30', end: '11:10', isBreak: false },
+            { id: '5', label: '5. Ders', start: '11:20', end: '12:00', isBreak: false },
+            { id: 'break', label: 'Öğle Arası', start: '12:00', end: '12:20', isBreak: true },
+            { id: '6', label: '6. Ders', start: '12:20', end: '13:00', isBreak: false },
+            { id: '7', label: '7. Ders', start: '13:10', end: '13:50', isBreak: false },
+            { id: '8', label: '8. Ders', start: '14:00', end: '14:40', isBreak: false },
+            { id: '9', label: '9. Ders / Etüt', start: '14:50', end: '15:30', isBreak: false }
+        ];
+
+        const LESSON_SLOTS = TIME_SLOTS.filter(s => !s.isBreak);
+        const DAYS_OF_WEEK = ['Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi', 'Pazar'];
+        const SHORT_DAYS = ['Pzt', 'Sal', 'Çrş', 'Prş', 'Cum', 'Cmt', 'Paz'];
+
+        const EQUIPMENT_OPTIONS = [
+            'Projeksiyon / Perde',
+            'Ses Sistemi',
+            'Kablosuz Mikrofon',
+            'Kürsü ve Kürsü Mikrofonu',
+            'Bilgisayar / Laptop',
+            'Sahne Işıklandırması',
+            'Piyano / Müzik Enstrümanları',
+            'Ekstra Sandalye / Masa Düzeni',
+            'Kamera / Kayıt Sistemi',
+            'Sadece Salon Kullanımı'
+        ];
+
+        const LOCAL_PROFILE_KEY = 'vfl_user_profile_v1';
+
+        // Uygulama Durumu
+        let db = null;
+        let auth = null;
+        let currentUser = null;
+        let appId = typeof __app_id !== 'undefined' ? __app_id : 'validebag-fen-lisesi-salon';
+        let isCloudReady = false;
+
+        let reservations = [];
+        let mediaItems = [];
+        let systemSettings = {
+            adminPin: '1234',
+            adminOfficers: [
+                'Kemal ŞİRİN (Müdür Yardımcısı)',
+                'Ayşe YILMAZ (Müdür Başyardımcısı)',
+                'Nöbetçi Müdür Yardımcısı'
+            ]
+        };
+
+        let userProfile = {
+            role: 'teacher',
+            teacherName: '',
+            adminName: 'Kemal ŞİRİN (Müdür Yardımcısı)',
+            onboarded: false
+        };
+
+        let currentMonday = getMonday(new Date());
+        let selectedMobileDayIndex = (new Date().getDay() + 6) % 7; // 0=Pzt ... 6=Paz
+        let activeView = 'schedule';
+        let approvalStatusFilter = 'ALL';
+        let formSelectedSlots = ['1'];
+
+        // ==========================================
+        // 2. FIREBASE BAŞLATMA VE REAL-TIME DİNLEYİCİLER
+        // ==========================================
+        async function initFirebaseCloud() {
+            try {
+                if (typeof __firebase_config === 'undefined' || !__firebase_config) {
+                    throw new Error('Firebase config tanımlı değil');
+                }
+                const firebaseConfig = JSON.parse(__firebase_config);
+                const app = initializeApp(firebaseConfig);
+                auth = getAuth(app);
+                db = getFirestore(app);
+
+                // Önce kimlik doğrulama (RULE 3)
+                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                    await signInWithCustomToken(auth, __initial_auth_token);
+                } else {
+                    await signInAnonymously(auth);
+                }
+
+                currentUser = auth.currentUser;
+                onAuthStateChanged(auth, (user) => {
+                    currentUser = user;
+                });
+
+                if (currentUser) {
+                    isCloudReady = true;
+                    updateCloudBadge(true, 'Bulut Canlı');
+                    subscribeToCloudCollections();
+                }
+            } catch (err) {
+                console.warn('Bulut bağlantısı çevrimdışı moda düştü:', err);
+                isCloudReady = false;
+                updateCloudBadge(false, 'Yerel Mod');
+                loadFallbackLocalData();
+            }
+        }
+
+        function updateCloudBadge(online, text) {
+            const badge = document.getElementById('cloud-sync-badge');
+            const label = document.getElementById('cloud-sync-text');
+            if (!badge || !label) return;
+            label.textContent = text;
+            badge.className = online
+                ? 'inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 shrink-0'
+                : 'inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30 shrink-0';
+        }
+
+        // Firestore Public Koleksiyon Yolları (RULE 1: /artifacts/{appId}/public/data/{collectionName})
+        function getPublicCollection(colName) {
+            return collection(db, 'artifacts', appId, 'public', 'data', colName);
+        }
+
+        function getPublicDoc(colName, docId) {
+            return doc(db, 'artifacts', appId, 'public', 'data', colName, docId);
+        }
+
+        function subscribeToCloudCollections() {
+            if (!currentUser || !db) return;
+
+            // 1. Rezervasyonlar Gerçek Zamanlı Dinleyici
+            onSnapshot(
+                getPublicCollection('reservations'),
+                async (snapshot) => {
+                    const list = [];
+                    snapshot.forEach((docSnap) => {
+                        list.push({ id: docSnap.id, ...docSnap.data() });
+                    });
+
+                    // İlk kurulumda koleksiyon tamamen boşsa örnek kayıtları ekle
+                    if (list.length === 0 && !sessionStorage.getItem('vfl_seeded_once')) {
+                        sessionStorage.setItem('vfl_seeded_once', '1');
+                        await seedInitialCloudData();
+                        return;
+                    }
+
+                    reservations = list;
+                    renderAll();
+                },
+                (error) => {
+                    console.error('Rezervasyon senkronizasyon hatası:', error);
+                    showToast('Bulut veri akışında gecikme oluştu.', 'error');
+                }
+            );
+
+            // 2. Medya & Görsel Arşivi Gerçek Zamanlı Dinleyici
+            onSnapshot(
+                getPublicCollection('event_media'),
+                (snapshot) => {
+                    const list = [];
+                    snapshot.forEach((docSnap) => {
+                        list.push({ id: docSnap.id, ...docSnap.data() });
+                    });
+                    mediaItems = list;
+                    renderAll();
+                },
+                (error) => {
+                    console.error('Medya senkronizasyon hatası:', error);
+                }
+            );
+
+            // 3. Sistem Ayarları (Yönetici Listesi & PIN)
+            onSnapshot(
+                getPublicDoc('settings', 'config'),
+                (docSnap) => {
+                    if (docSnap.exists()) {
+                        systemSettings = { ...systemSettings, ...docSnap.data() };
+                        renderAdminOfficersList();
+                    }
+                },
+                (error) => {
+                    console.error('Ayarlar okuma hatası:', error);
+                }
+            );
+        }
+
+        async function seedInitialCloudData() {
+            if (!currentUser || !db) return;
+            const weekDates = getWeekDates(currentMonday);
+            const nowStr = formatDateTimeNow();
+
+            const samples = [
+                {
+                    id: 'res-vfl-1',
+                    date: weekDates[0].iso,
+                    day: 'Pazartesi',
+                    slotIds: ['2', '3', '4'],
+                    teacher: 'Dr. Selin Kaya (Biyoloji)',
+                    purpose: 'Seminer / Konferans',
+                    title: 'TÜBİTAK 2204-A Proje Yazımı ve Bilim Söyleşisi',
+                    participants: 150,
+                    equipment: ['Projeksiyon / Perde', 'Ses Sistemi', 'Kablosuz Mikrofon', 'Bilgisayar / Laptop'],
+                    notes: '10. ve 11. sınıf öğrencileri katılacak. 2 adet telsiz mikrofon hazır edilmeli.',
+                    status: 'Onaylandı',
+                    adminNote: 'Ses sistemi ve projeksiyon kurulumu 08:30 itibarıyla hazır edilecektir.',
+                    decidedBy: 'Kemal ŞİRİN (Müdür Yardımcısı)',
+                    auditLog: [
+                        { time: nowStr, actor: 'Dr. Selin Kaya (Biyoloji)', role: 'Talep Eden', action: 'Talep Oluşturuldu', note: '10. ve 11. sınıf öğrencileri katılacak.' },
+                        { time: nowStr, actor: 'Kemal ŞİRİN (Müdür Yardımcısı)', role: 'Admin / Yönetici', action: 'Onaylandı', note: 'Ses sistemi ve projeksiyon kurulumu hazır edilecektir.' }
+                    ]
+                },
+                {
+                    id: 'res-vfl-2',
+                    date: weekDates[2].iso,
+                    day: 'Çarşamba',
+                    slotIds: ['6', '7'],
+                    teacher: 'Murat Demir (Müzik)',
+                    purpose: 'Müzik / Dinleti',
+                    title: 'Okul Orkestrası ve Çok Sesli Koro Dinletisi',
+                    participants: 130,
+                    equipment: ['Ses Sistemi', 'Piyano / Müzik Enstrümanları', 'Sahne Işıklandırması'],
+                    notes: 'Kuyruklu piyano sahne soluna alınacak.',
+                    status: 'Onaylandı',
+                    adminNote: 'Onaylandı. Etkinlik sonrası piyano örtüsü kapatılmalıdır.',
+                    decidedBy: 'Kemal ŞİRİN (Müdür Yardımcısı)',
+                    auditLog: [
+                        { time: nowStr, actor: 'Murat Demir (Müzik)', role: 'Talep Eden', action: 'Talep Oluşturuldu', note: 'Kuyruklu piyano sahne soluna alınacak.' },
+                        { time: nowStr, actor: 'Kemal ŞİRİN (Müdür Yardımcısı)', role: 'Admin / Yönetici', action: 'Onaylandı', note: 'Onaylandı.' }
+                    ]
+                },
+                {
+                    id: 'res-vfl-3',
+                    date: weekDates[3].iso,
+                    day: 'Perşembe',
+                    slotIds: ['7', '8'],
+                    teacher: 'Zeynep Arslan (Edebiyat)',
+                    purpose: 'Tiyatro / Gösteri',
+                    title: 'Tiyatro Kulübü Sahne Okuması ve Drama Provası',
+                    participants: 40,
+                    equipment: ['Sahne Işıklandırması', 'Kablosuz Mikrofon'],
+                    notes: 'Sahne ortasına 6 adet sandalye yerleştirilecek.',
+                    status: 'Onay Bekliyor',
+                    adminNote: '',
+                    decidedBy: '',
+                    auditLog: [
+                        { time: nowStr, actor: 'Zeynep Arslan (Edebiyat)', role: 'Talep Eden', action: 'Talep Oluşturuldu', note: 'Sahne ortasına 6 adet sandalye yerleştirilecek.' }
+                    ]
+                }
+            ];
+
+            for (const item of samples) {
+                await setDoc(getPublicDoc('reservations', item.id), item);
+            }
+            await setDoc(getPublicDoc('settings', 'config'), systemSettings);
+        }
+
+        function loadFallbackLocalData() {
+            const weekDates = getWeekDates(currentMonday);
+            reservations = [
+                {
+                    id: 'local-1',
+                    date: weekDates[0].iso,
+                    day: 'Pazartesi',
+                    slotIds: ['2', '3'],
+                    teacher: 'Dr. Selin Kaya (Biyoloji)',
+                    purpose: 'Seminer / Konferans',
+                    title: 'TÜBİTAK Bilim Söyleşisi',
+                    participants: 140,
+                    equipment: ['Projeksiyon / Perde', 'Ses Sistemi'],
+                    notes: '',
+                    status: 'Onaylandı',
+                    adminNote: 'Onaylandı.',
+                    decidedBy: 'Kemal ŞİRİN (Müdür Yardımcısı)',
+                    auditLog: []
+                }
+            ];
+            renderAll();
+        }
+
+        // ==========================================
+        // 3. BAŞLANGIÇ & KULLANICI PROFİLİ (ONBOARDING)
+        // ==========================================
+        window.onload = async function () {
+            loadLocalUserProfile();
+            initFormOptions();
+            applyReportPreset('all');
+            syncRoleUI();
+            renderAll();
+            lucide.createIcons();
+
+            if (!userProfile.onboarded) {
+                document.getElementById('onboarding-modal').classList.remove('hidden');
+            }
+
+            await initFirebaseCloud();
+        };
+
+        function loadLocalUserProfile() {
+            const saved = localStorage.getItem(LOCAL_PROFILE_KEY);
+            if (saved) {
+                try {
+                    userProfile = { ...userProfile, ...JSON.parse(saved) };
+                } catch (e) {}
+            }
+        }
+
+        function saveLocalUserProfile() {
+            localStorage.setItem(LOCAL_PROFILE_KEY, JSON.stringify(userProfile));
+        }
+
+        window.completeOnboardingAsTeacher = function () {
+            const nameInput = document.getElementById('onboard-teacher-name').value.trim();
+            if (!nameInput) {
+                showToast('Lütfen adınızı ve branşınızı yazınız.', 'error');
+                return;
+            }
+            userProfile.role = 'teacher';
+            userProfile.teacherName = nameInput;
+            userProfile.onboarded = true;
+            saveLocalUserProfile();
+            document.getElementById('onboarding-modal').classList.add('hidden');
+            syncRoleUI();
+            renderAll();
+            showToast(`Hoş geldiniz, ${nameInput}`, 'success');
+        };
+
+        window.completeOnboardingAsAdmin = function () {
+            const pin = document.getElementById('onboard-admin-pin').value.trim();
+            if (pin !== systemSettings.adminPin) {
+                showToast('Hatalı Yönetici PIN kodu! (Varsayılan: 1234)', 'error');
+                return;
+            }
+            userProfile.role = 'admin';
+            userProfile.adminName = systemSettings.adminOfficers[0] || 'Kemal ŞİRİN (Müdür Yardımcısı)';
+            userProfile.onboarded = true;
+            saveLocalUserProfile();
+            document.getElementById('onboarding-modal').classList.add('hidden');
+            syncRoleUI();
+            switchView('approvals');
+            showToast(`Yönetici girişi başarılı: ${userProfile.adminName}`, 'success');
+        };
+
+        window.updateActiveUserName = function (val) {
+            const clean = val.trim();
+            if (!clean) return;
+            if (userProfile.role === 'teacher') {
+                userProfile.teacherName = clean;
+            } else {
+                userProfile.adminName = clean;
+            }
+            saveLocalUserProfile();
+            renderAll();
+        };
+
+        // ==========================================
+        // 4. ROL YÖNETİMİ (ÖĞRETMEN <-> ADMIN)
+        // ==========================================
+        window.switchRole = function (role) {
+            userProfile.role = role;
+            saveLocalUserProfile();
+            syncRoleUI();
+            renderAll();
+            if (role === 'admin') {
+                approvalStatusFilter = 'Onay Bekliyor';
+                switchView('approvals');
+            }
+        };
+
+        window.requestAdminAccess = function () {
+            if (userProfile.role === 'admin') return;
+            const selector = document.getElementById('pin-admin-selector');
+            selector.innerHTML = systemSettings.adminOfficers
+                .map(name => `<option value="${escapeHTML(name)}" ${name === userProfile.adminName ? 'selected' : ''}>${escapeHTML(name)}</option>`)
+                .join('');
+            document.getElementById('admin-pin-input').value = '';
+            document.getElementById('admin-pin-modal').classList.remove('hidden');
+            setTimeout(() => document.getElementById('admin-pin-input').focus(), 100);
+        };
+
+        window.closeAdminPinModal = function () {
+            document.getElementById('admin-pin-modal').classList.add('hidden');
+        };
+
+        window.verifyAdminPin = function (e) {
+            e.preventDefault();
+            const pinVal = document.getElementById('admin-pin-input').value.trim();
+            const selectedOfficer = document.getElementById('pin-admin-selector').value;
+
+            if (pinVal === systemSettings.adminPin) {
+                userProfile.adminName = selectedOfficer;
+                closeAdminPinModal();
+                switchRole('admin');
+                showToast(`Admin moduna geçildi: ${selectedOfficer}`, 'success');
+            } else {
+                showToast('Hatalı yönetici PIN kodu! (1234)', 'error');
+            }
+        };
+
+        function syncRoleUI() {
+            const btnTeacher = document.getElementById('btn-role-teacher');
+            const btnAdmin = document.getElementById('btn-role-admin');
+            const userInput = document.getElementById('active-user-input');
+            const roleText = document.getElementById('role-indicator-text');
+            const settingsBtn = document.getElementById('btn-admin-settings');
+            const deskNewBtn = document.getElementById('desktop-new-btn-text');
+            const sideApprovalsLabel = document.getElementById('side-approvals-label');
+            const mobApprovalsLabel = document.getElementById('mob-approvals-label');
+
+            if (userProfile.role === 'admin') {
+                btnAdmin.className = 'inline-flex items-center gap-1 px-2.5 py-1.5 text-[11px] sm:text-xs font-bold rounded-lg bg-amber-500 text-slate-950 shadow transition-all';
+                btnTeacher.className = 'px-2.5 py-1.5 text-[11px] sm:text-xs font-bold rounded-lg text-slate-300 hover:text-white transition-all';
+                userInput.value = userProfile.adminName;
+                roleText.textContent = 'Yönetici Onay Yetkisi Aktif';
+                settingsBtn.classList.remove('hidden');
+                deskNewBtn.textContent = 'Doğrudan Kayıt Ekle';
+                sideApprovalsLabel.textContent = 'Yönetici Onay Kuyruğu';
+                mobApprovalsLabel.textContent = 'Onaylar';
+            } else {
+                btnTeacher.className = 'px-2.5 py-1.5 text-[11px] sm:text-xs font-bold rounded-lg bg-blue-600 text-white shadow transition-all';
+                btnAdmin.className = 'inline-flex items-center gap-1 px-2.5 py-1.5 text-[11px] sm:text-xs font-bold rounded-lg text-slate-300 hover:text-white transition-all';
+                userInput.value = userProfile.teacherName || 'Öğretmen';
+                roleText.textContent = 'Talepler yönetici onayına iletilir';
+                settingsBtn.classList.add('hidden');
+                deskNewBtn.textContent = 'Yeni Talep Oluştur';
+                sideApprovalsLabel.textContent = 'Talepler & Durumlar';
+                mobApprovalsLabel.textContent = 'Talepler';
+            }
+        }
+
+        // Yönetici Ayarları
+        window.openAdminSettingsModal = function () {
+            renderAdminOfficersList();
+            document.getElementById('update-admin-pin-input').value = systemSettings.adminPin;
+            document.getElementById('admin-settings-modal').classList.remove('hidden');
+        };
+
+        window.closeAdminSettingsModal = function () {
+            document.getElementById('admin-settings-modal').classList.add('hidden');
+        };
+
+        function renderAdminOfficersList() {
+            const listEl = document.getElementById('admin-officers-list');
+            if (!listEl) return;
+            listEl.innerHTML = systemSettings.adminOfficers.map((officer, idx) => `
+                <div class="flex items-center justify-between p-2.5 rounded-xl bg-slate-50 border border-slate-200 text-xs">
+                    <span class="font-semibold text-slate-800">${escapeHTML(officer)}</span>
+                    ${systemSettings.adminOfficers.length > 1 ? `
+                        <button type="button" onclick="removeAdminOfficer(${idx})" class="text-rose-600 font-bold">Sil</button>
+                    ` : ''}
+                </div>
+            `).join('');
+        }
+
+        window.addNewAdminOfficer = async function () {
+            const input = document.getElementById('new-admin-name');
+            const name = input.value.trim();
+            if (!name) return;
+            if (!systemSettings.adminOfficers.includes(name)) {
+                systemSettings.adminOfficers.push(name);
+                if (isCloudReady && currentUser) {
+                    await setDoc(getPublicDoc('settings', 'config'), systemSettings);
+                }
+                renderAdminOfficersList();
+                showToast('Yeni yönetici eklendi.', 'success');
+            }
+            input.value = '';
+        };
+
+        window.removeAdminOfficer = async function (idx) {
+            systemSettings.adminOfficers.splice(idx, 1);
+            if (isCloudReady && currentUser) {
+                await setDoc(getPublicDoc('settings', 'config'), systemSettings);
+            }
+            renderAdminOfficersList();
+        };
+
+        window.updateAdminPinCode = async function () {
+            const newPin = document.getElementById('update-admin-pin-input').value.trim();
+            if (newPin.length < 4) {
+                showToast('PIN kodu en az 4 karakter olmalıdır.', 'error');
+                return;
+            }
+            systemSettings.adminPin = newPin;
+            if (isCloudReady && currentUser) {
+                await setDoc(getPublicDoc('settings', 'config'), systemSettings);
+            }
+            showToast('Yönetici PIN kodu bulutta güncellendi.', 'success');
+        };
+
+        // ==========================================
+        // 5. TARİH, DERS SAATLERİ VE PAYLAŞIM YARDIMCILARI
+        // ==========================================
+        function getMonday(d) {
+            const date = new Date(d);
+            const day = date.getDay();
+            const diff = date.getDate() - day + (day === 0 ? -6 : 1);
+            date.setDate(diff);
+            date.setHours(0, 0, 0, 0);
+            return date;
+        }
+
+        function formatDateISO(date) {
+            const y = date.getFullYear();
+            const m = String(date.getMonth() + 1).padStart(2, '0');
+            const d = String(date.getDate()).padStart(2, '0');
+            return `${y}-${m}-${d}`;
+        }
+
+        function formatDateTR(isoStr) {
+            if (!isoStr) return '';
+            const [y, m, d] = isoStr.split('-');
+            const months = ['Oca', 'Şub', 'Mar', 'Nis', 'May', 'Haz', 'Tem', 'Ağu', 'Eyl', 'Eki', 'Kas', 'Ara'];
+            return `${parseInt(d, 10)} ${months[parseInt(m, 10) - 1]} ${y}`;
+        }
+
+        function formatDateTimeNow() {
+            const now = new Date();
+            return `${formatDateTR(formatDateISO(now))} ${now.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })}`;
+        }
+
+        function getWeekDates(mondayDate) {
+            return DAYS_OF_WEEK.map((dayName, idx) => {
+                const d = new Date(mondayDate);
+                d.setDate(mondayDate.getDate() + idx);
+                return {
+                    dayName,
+                    shortName: SHORT_DAYS[idx],
+                    dateObj: d,
+                    iso: formatDateISO(d),
+                    dayNum: d.getDate()
+                };
+            });
+        }
+
+        function formatSlotRangeSummary(slotIds) {
+            if (!slotIds || slotIds.length === 0) {
+                return { lessonText: 'Saat seçilmedi', timeText: '-', count: 0, fullText: 'Saat seçilmedi' };
+            }
+            const sorted = [...slotIds].sort((a, b) => Number(a) - Number(b));
+            const firstSlot = LESSON_SLOTS.find(s => s.id === sorted[0]);
+            const lastSlot = LESSON_SLOTS.find(s => s.id === sorted[sorted.length - 1]);
+            if (!firstSlot || !lastSlot) return { lessonText: '-', timeText: '-', count: 0, fullText: '-' };
+
+            let isContiguous = true;
+            for (let i = 1; i < sorted.length; i++) {
+                if (Number(sorted[i]) !== Number(sorted[i - 1]) + 1) {
+                    isContiguous = false;
+                    break;
+                }
+            }
+
+            const lessonText = sorted.length === 1
+                ? firstSlot.label
+                : isContiguous
+                    ? `${sorted[0]}-${sorted[sorted.length - 1]}. Ders`
+                    : sorted.map(id => `${id}.`).join(', ') + ' Ders';
+
+            return {
+                lessonText,
+                timeText: `${firstSlot.start} - ${lastSlot.end}`,
+                count: sorted.length,
+                fullText: `${lessonText} (${firstSlot.start} - ${lastSlot.end} • ${sorted.length} Ders)`
+            };
+        }
+
+        function initFormOptions() {
+            const eqContainer = document.getElementById('equipment-checkboxes');
+            eqContainer.innerHTML = EQUIPMENT_OPTIONS.map(eq => `
+                <label class="flex items-center gap-2 p-2.5 rounded-xl border border-slate-200 bg-slate-50 hover:bg-blue-50/50 cursor-pointer">
+                    <input type="checkbox" name="equipment" value="${eq}" class="w-4 h-4 text-blue-600 rounded border-slate-300">
+                    <span class="text-xs font-medium text-slate-700 leading-tight">${eq}</span>
+                </label>
+            `).join('');
+        }
+
+        window.shareAppLink = function () {
+            const shareUrl = window.location.href;
+            const shareText = `Validebağ Fen Lisesi Konferans Salonu Rezervasyon ve Onay Uygulaması: ${shareUrl}`;
+
+            if (navigator.share) {
+                navigator.share({
+                    title: 'Validebağ Fen Lisesi Konferans Salonu',
+                    text: 'Konferans salonu rezervasyon talebi oluşturmak ve takvimi görmek için tıklayın:',
+                    url: shareUrl
+                }).catch(() => {});
+            } else {
+                const tempInput = document.createElement('input');
+                tempInput.value = shareUrl;
+                document.body.appendChild(tempInput);
+                tempInput.select();
+                document.execCommand('copy');
+                document.body.removeChild(tempInput);
+                showToast('Uygulama bağlantısı kopyalandı! WhatsApp grubunda paylaşabilirsiniz.', 'success');
+            }
+        };
+
+        // ==========================================
+        // 6. ANA RENDER FONKSİYONLARI
+        // ==========================================
+        function renderAll() {
+            updateStats();
+            updateWeekHeader();
+            renderMobileDayStrip();
+            renderMobileDailySchedule();
+            renderDesktopScheduleTable();
+            renderDesktopRightDrawer();
+            renderApprovalsView();
+            renderReportsView();
+            lucide.createIcons();
+        }
+
+        function updateStats() {
+            const approved = reservations.filter(r => r.status === 'Onaylandı').length;
+            const pending = reservations.filter(r => r.status === 'Onay Bekliyor').length;
+            const totalHours = reservations
+                .filter(r => r.status !== 'Reddedildi')
+                .reduce((sum, r) => sum + (r.slotIds ? r.slotIds.length : 1), 0);
+
+            document.getElementById('desk-stat-approved').textContent = approved;
+            document.getElementById('desk-stat-pending').textContent = pending;
+            document.getElementById('desk-stat-hours').textContent = totalHours;
+            document.getElementById('desk-stat-media').textContent = mediaItems.length;
+            document.getElementById('side-media-badge').textContent = mediaItems.length;
+            document.getElementById('drawer-pending-count').textContent = pending;
+            document.getElementById('pill-count-pending').textContent = pending;
+
+            const badges = [
+                document.getElementById('header-pending-badge'),
+                document.getElementById('mob-pending-badge'),
+                document.getElementById('side-pending-badge')
+            ];
+            badges.forEach(b => {
+                if (!b) return;
+                if (pending > 0) {
+                    b.textContent = pending;
+                    b.classList.remove('hidden');
+                } else {
+                    b.classList.add('hidden');
+                }
+            });
+        }
+
+        function updateWeekHeader() {
+            const weekDates = getWeekDates(currentMonday);
+            const startStr = formatDateTR(weekDates[0].iso);
+            const endStr = formatDateTR(weekDates[6].iso);
+            document.getElementById('current-week-label').textContent = `${startStr} – ${endStr}`;
+        }
+
+        // MOBİL YATAY HAFTALIK GÜN ŞERİDİ (< 9 Pzt, 10 Sal ... 14 Cmt, 15 Paz >)
+        function renderMobileDayStrip() {
+            const weekDates = getWeekDates(currentMonday);
+            const todayISO = formatDateISO(new Date());
+            const container = document.getElementById('mobile-day-strip');
+
+            container.innerHTML = weekDates.map((d, idx) => {
+                const isSelected = idx === selectedMobileDayIndex;
+                const isToday = d.iso === todayISO;
+                const hasEvents = reservations.some(r => r.date === d.iso && r.status !== 'Reddedildi');
+
+                return `
+                    <button onclick="selectMobileDay(${idx})" class="flex flex-col items-center justify-center py-2 px-0.5 rounded-2xl transition-all ${
+                        isSelected
+                            ? 'bg-blue-600 text-white shadow-md shadow-blue-600/30'
+                            : 'hover:bg-slate-100 text-slate-700'
+                    }">
+                        <span class="text-sm font-extrabold leading-none">${d.dayNum}</span>
+                        <span class="text-[11px] font-semibold mt-1 ${isSelected ? 'text-blue-100' : 'text-slate-400'}">${d.shortName}</span>
+                        <span class="w-1.5 h-1.5 rounded-full mt-1 ${
+                            hasEvents
+                                ? (isSelected ? 'bg-white' : 'bg-blue-600')
+                                : (isToday ? 'bg-slate-400' : 'bg-transparent')
+                        }"></span>
+                    </button>
+                `;
+            }).join('');
+        }
+
+        // MOBİL TEK GÜNLÜK DERS SAATİ LİSTESİ (Paylaşılan Ekran Görüntüsündeki Düzen)
+        function renderMobileDailySchedule() {
+            const weekDates = getWeekDates(currentMonday);
+            const selectedDay = weekDates[selectedMobileDayIndex] || weekDates[0];
+            const container = document.getElementById('mobile-daily-schedule');
+
+            container.innerHTML = TIME_SLOTS.map(slot => {
+                if (slot.isBreak) {
+                    return `
+                        <div class="bg-slate-100/90 px-4 py-2 flex items-center justify-between text-xs text-slate-500">
+                            <span class="font-bold">${slot.label}</span>
+                            <span class="font-medium">${slot.start} - ${slot.end}</span>
+                        </div>
+                    `;
+                }
+
+                const dayBookings = reservations.filter(r =>
+                    r.date === selectedDay.iso &&
+                    r.slotIds && r.slotIds.includes(slot.id) &&
+                    r.status !== 'Reddedildi'
+                );
+
+                const booking = dayBookings.find(b => b.status === 'Onaylandı') || dayBookings[0];
+
+                return `
+                    <div class="flex items-stretch min-h-[76px] bg-white">
+                        <!-- Sol Saat Sütunu -->
+                        <div class="w-24 shrink-0 py-3 px-2 border-r border-slate-200/80 flex flex-col items-center justify-center text-center bg-slate-50/40">
+                            <span class="text-[11px] font-semibold text-slate-400">${slot.label}</span>
+                            <span class="text-sm font-extrabold text-slate-900 mt-0.5 leading-tight">${slot.start}</span>
+                            <span class="w-2.5 h-0.5 bg-blue-500 my-1 rounded-full"></span>
+                            <span class="text-sm font-extrabold text-slate-900 leading-tight">${slot.end}</span>
+                        </div>
+
+                        <!-- Sağ İçerik Alanı -->
+                        <div class="flex-1 p-2.5 flex items-center">
+                            ${!booking ? `
+                                <button onclick="openModalWithPreset('${selectedDay.iso}', '${selectedDay.dayName}', '${slot.id}')" class="w-full h-full min-h-[54px] rounded-xl border border-dashed border-slate-200 active:border-blue-400 active:bg-blue-50/50 flex items-center justify-between px-3.5 text-slate-400">
+                                    <span class="text-sm font-medium">-</span>
+                                    <span class="text-[11px] font-bold text-blue-600 bg-blue-50 px-2.5 py-1 rounded-lg">+ Talep Et</span>
+                                </button>
+                            ` : (() => {
+                                const isApproved = booking.status === 'Onaylandı';
+                                const summary = formatSlotRangeSummary(booking.slotIds);
+                                const mCount = mediaItems.filter(m => m.reservationId === booking.id).length;
+                                return `
+                                    <div onclick="openDetailModal('${booking.id}')" class="slot-card w-full p-3 rounded-2xl border cursor-pointer ${
+                                        isApproved
+                                            ? 'bg-emerald-50/90 border-emerald-200 text-emerald-950'
+                                            : 'bg-amber-50/90 border-amber-300 text-amber-950'
+                                    }">
+                                        <div class="flex items-center justify-between gap-2 mb-1">
+                                            <span class="text-[10px] font-extrabold px-2 py-0.5 rounded-md ${
+                                                isApproved ? 'bg-emerald-600 text-white' : 'bg-amber-500 text-white'
+                                            }">
+                                                ${isApproved ? 'Onaylandı' : 'Onay Bekliyor'} • ${summary.lessonText}
+                                            </span>
+                                            <div class="flex items-center gap-1.5 text-[11px] font-bold">
+                                                ${mCount > 0 ? `<span class="text-blue-700 flex items-center gap-0.5"><i data-lucide="camera" class="w-3 h-3"></i>${mCount}</span>` : ''}
+                                                <span><i data-lucide="users" class="w-3 h-3 inline"></i> ${booking.participants}</span>
+                                            </div>
+                                        </div>
+                                        <p class="text-xs font-extrabold leading-snug">${escapeHTML(booking.title)}</p>
+                                        <p class="text-[11px] opacity-80 mt-0.5 truncate">${escapeHTML(booking.teacher)}</p>
+                                    </div>
+                                `;
+                            })()}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // MASAÜSTÜ GENİŞ HAFTALIK MATRİS TABLOSU
+        function renderDesktopScheduleTable() {
+            const weekDates = getWeekDates(currentMonday).slice(0, 6); // Pzt - Cmt
+            const todayISO = formatDateISO(new Date());
+            const thead = document.getElementById('schedule-table-head');
+            const tbody = document.getElementById('schedule-table-body');
+
+            let headHTML = `
+                <th class="w-28 py-3 px-2 text-center text-xs font-extrabold uppercase tracking-wider text-slate-500 border-r border-slate-200 bg-slate-50 sticky left-0 z-10">
+                    Ders / Saat
+                </th>
+            `;
+
+            weekDates.forEach(d => {
+                const isToday = d.iso === todayISO;
+                headHTML += `
+                    <th class="py-3 px-2 text-center border-r border-slate-200 last:border-r-0 min-w-[145px] ${isToday ? 'bg-blue-50/70' : ''}">
+                        <span class="text-xs font-semibold block ${isToday ? 'text-blue-600' : 'text-slate-500'}">${d.dayName}</span>
+                        <span class="mt-0.5 inline-block px-2.5 py-0.5 rounded-full text-xs font-extrabold ${
+                            isToday ? 'bg-blue-600 text-white' : 'text-slate-800'
+                        }">${d.dayNum} ${d.dateObj.toLocaleDateString('tr-TR', { month: 'short' })}</span>
+                    </th>
+                `;
+            });
+            thead.innerHTML = headHTML;
+
+            let bodyHTML = '';
+            TIME_SLOTS.forEach(slot => {
+                if (slot.isBreak) {
+                    bodyHTML += `
+                        <tr class="bg-slate-100/90">
+                            <td class="py-1.5 px-2 text-center border-r border-slate-200 sticky left-0 bg-slate-100 z-10">
+                                <span class="text-[11px] font-bold text-slate-500 block">${slot.label}</span>
+                                <span class="text-[10px] text-slate-400">${slot.start} - ${slot.end}</span>
+                            </td>
+                            <td colspan="6" class="py-1.5 px-4 text-center text-xs font-medium text-slate-500">
+                                — Öğle Arası (${slot.start} - ${slot.end}) —
+                            </td>
+                        </tr>
+                    `;
+                    return;
+                }
+
+                bodyHTML += `<tr class="hover:bg-slate-50/40">`;
+                bodyHTML += `
+                    <td class="py-2.5 px-2 text-center border-r border-slate-200 bg-white sticky left-0 z-10">
+                        <div class="text-[10px] font-semibold text-slate-400">${slot.label}</div>
+                        <div class="text-xs font-extrabold text-slate-800">${slot.start}</div>
+                        <div class="w-2 h-0.5 bg-blue-500 mx-auto my-0.5 rounded-full"></div>
+                        <div class="text-xs font-extrabold text-slate-800">${slot.end}</div>
+                    </td>
+                `;
+
+                weekDates.forEach(d => {
+                    const cellBookings = reservations.filter(r =>
+                        r.date === d.iso &&
+                        r.slotIds && r.slotIds.includes(slot.id) &&
+                        r.status !== 'Reddedildi'
+                    );
+
+                    if (cellBookings.length === 0) {
+                        bodyHTML += `
+                            <td onclick="openModalWithPreset('${d.iso}', '${d.dayName}', '${slot.id}')" class="p-1.5 border-r border-slate-200 last:border-r-0 cursor-pointer group/cell hover:bg-blue-50/50 transition-colors">
+                                <div class="h-16 rounded-xl border border-dashed border-transparent group-hover/cell:border-blue-300 flex items-center justify-center text-slate-300 group-hover/cell:text-blue-600 text-xs font-bold">
+                                    <span class="group-hover/cell:hidden">-</span>
+                                    <span class="hidden group-hover/cell:inline">+ Talep</span>
+                                </div>
+                            </td>
+                        `;
+                    } else {
+                        const booking = cellBookings.find(b => b.status === 'Onaylandı') || cellBookings[0];
+                        const isApproved = booking.status === 'Onaylandı';
+                        const summary = formatSlotRangeSummary(booking.slotIds);
+                        const mCount = mediaItems.filter(m => m.reservationId === booking.id).length;
+
+                        bodyHTML += `
+                            <td class="p-1.5 border-r border-slate-200 last:border-r-0 align-top">
+                                <div onclick="openDetailModal('${booking.id}')" class="slot-card cursor-pointer p-2 rounded-xl border shadow-sm min-h-[72px] flex flex-col justify-between ${
+                                    isApproved
+                                        ? 'bg-emerald-50/90 border-emerald-200 hover:border-emerald-400 text-emerald-950'
+                                        : 'bg-amber-50/90 border-amber-300 hover:border-amber-500 text-amber-950'
+                                }">
+                                    <div>
+                                        <div class="flex items-center justify-between gap-1 mb-1">
+                                            <span class="text-[9px] font-extrabold px-1.5 py-0.5 rounded ${
+                                                isApproved ? 'bg-emerald-600 text-white' : 'bg-amber-500 text-white'
+                                            }">
+                                                ${summary.count > 1 ? summary.lessonText : (isApproved ? 'Onaylı' : 'Bekliyor')}
+                                            </span>
+                                            <span class="text-[10px] font-bold opacity-80">${mCount > 0 ? `📷${mCount} ` : ''}${booking.participants}k</span>
+                                        </div>
+                                        <p class="text-[11px] font-bold line-clamp-2 leading-tight">${escapeHTML(booking.title)}</p>
+                                    </div>
+                                    <p class="text-[10px] opacity-75 truncate mt-1 pt-1 border-t border-black/5">
+                                        ${escapeHTML(booking.teacher.split('(')[0].trim())}
+                                    </p>
+                                </div>
+                            </td>
+                        `;
+                    }
+                });
+
+                bodyHTML += `</tr>`;
+            });
+
+            tbody.innerHTML = bodyHTML;
+        }
+
+        // MASAÜSTÜ SAĞ CANLI ONAY ÇEKMECESİ
+        function renderDesktopRightDrawer() {
+            const container = document.getElementById('desktop-drawer-list');
+            if (!container) return;
+
+            const pendingList = reservations
+                .filter(r => r.status === 'Onay Bekliyor')
+                .sort((a, b) => a.date.localeCompare(b.date));
+
+            if (pendingList.length === 0) {
+                container.innerHTML = `
+                    <div class="p-6 text-center bg-slate-50 rounded-2xl border border-dashed border-slate-200">
+                        <i data-lucide="check-circle-2" class="w-8 h-8 text-emerald-500 mx-auto mb-2"></i>
+                        <p class="text-xs font-bold text-slate-700">Bekleyen Talep Yok</p>
+                        <p class="text-[11px] text-slate-400 mt-0.5">Yeni öğretmen talepleri burada anlık görünür.</p>
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = pendingList.map(r => {
+                const summary = formatSlotRangeSummary(r.slotIds);
+                return `
+                    <div class="p-3.5 rounded-2xl bg-amber-50/70 border border-amber-200 space-y-2">
+                        <div class="flex items-center justify-between text-[10px] font-bold text-amber-800">
+                            <span>${formatDateTR(r.date)} • ${r.day}</span>
+                            <span class="bg-amber-200/80 px-1.5 py-0.5 rounded">${summary.lessonText}</span>
+                        </div>
+                        <p onclick="openDetailModal('${r.id}')" class="text-xs font-extrabold text-slate-900 cursor-pointer hover:text-blue-700 leading-snug">
+                            ${escapeHTML(r.title)}
+                        </p>
+                        <p class="text-[11px] text-slate-600">${escapeHTML(r.teacher)} • ${r.participants} Kişi</p>
+
+                        ${userProfile.role === 'admin' ? `
+                            <div class="grid grid-cols-2 gap-1.5 pt-1">
+                                <button onclick="processAdminDecision('${r.id}', 'Onaylandı', 'Hızlı onay verildi.')" class="py-1.5 px-2 text-[11px] font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg">
+                                    ✓ Onayla
+                                </button>
+                                <button onclick="openDetailModal('${r.id}')" class="py-1.5 px-2 text-[11px] font-bold text-slate-700 bg-white border border-slate-200 hover:bg-slate-50 rounded-lg">
+                                    İncele
+                                </button>
+                            </div>
+                        ` : `
+                            <button onclick="openDetailModal('${r.id}')" class="w-full py-1.5 text-[11px] font-bold text-blue-700 bg-white border border-blue-200 rounded-lg">
+                                Detay &amp; Mesajlar
+                            </button>
+                        `}
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // ==========================================
+        // 7. TALEPLER & YÖNETİCİ ONAY GÖRÜNÜMÜ
+        // ==========================================
+        window.setApprovalFilter = function (filterVal) {
+            approvalStatusFilter = filterVal;
+            renderApprovalsView();
+            lucide.createIcons();
+        };
+
+        function renderApprovalsView() {
+            const search = (document.getElementById('filter-search')?.value || '').toLowerCase().trim();
+            const container = document.getElementById('approvals-list-container');
+            if (!container) return;
+
+            // Filtre buton stilleri
+            const pPending = document.getElementById('pill-filter-pending');
+            const pAll = document.getElementById('pill-filter-all');
+            const pApproved = document.getElementById('pill-filter-approved');
+            if (pPending && pAll && pApproved) {
+                pPending.className = approvalStatusFilter === 'Onay Bekliyor'
+                    ? 'px-3 py-1.5 text-xs font-bold rounded-xl bg-amber-500 text-white shadow-sm'
+                    : 'px-3 py-1.5 text-xs font-bold rounded-xl bg-amber-50 text-amber-800 border border-amber-200';
+                pAll.className = approvalStatusFilter === 'ALL'
+                    ? 'px-3 py-1.5 text-xs font-bold rounded-xl bg-slate-900 text-white shadow-sm'
+                    : 'px-3 py-1.5 text-xs font-bold rounded-xl bg-slate-100 text-slate-700';
+                pApproved.className = approvalStatusFilter === 'Onaylandı'
+                    ? 'px-3 py-1.5 text-xs font-bold rounded-xl bg-emerald-600 text-white shadow-sm'
+                    : 'px-3 py-1.5 text-xs font-bold rounded-xl bg-slate-100 text-slate-700';
+            }
+
+            const filtered = reservations
+                .filter(r => {
+                    const matchStatus = approvalStatusFilter === 'ALL' || r.status === approvalStatusFilter;
+                    const matchSearch = !search ||
+                        r.title.toLowerCase().includes(search) ||
+                        r.teacher.toLowerCase().includes(search) ||
+                        (r.equipment && r.equipment.join(' ').toLowerCase().includes(search));
+                    return matchStatus && matchSearch;
+                })
+                .sort((a, b) => {
+                    if (a.status === 'Onay Bekliyor' && b.status !== 'Onay Bekliyor') return -1;
+                    if (b.status === 'Onay Bekliyor' && a.status !== 'Onay Bekliyor') return 1;
+                    return a.date.localeCompare(b.date);
+                });
+
+            if (filtered.length === 0) {
+                container.innerHTML = `
+                    <div class="bg-white rounded-2xl border border-slate-200 p-10 text-center">
+                        <p class="text-sm font-bold text-slate-800">Görüntülenecek Talep Bulunamadı</p>
+                        <p class="text-xs text-slate-500 mt-1">Farklı bir filtre seçebilir veya yeni rezervasyon talebi oluşturabilirsiniz.</p>
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = filtered.map(r => {
+                const summary = formatSlotRangeSummary(r.slotIds);
+                const mCount = mediaItems.filter(m => m.reservationId === r.id).length;
+                const isPending = r.status === 'Onay Bekliyor';
+                const statusBadge = r.status === 'Onaylandı'
+                    ? 'bg-emerald-100 text-emerald-800 border-emerald-200'
+                    : r.status === 'Reddedildi'
+                        ? 'bg-rose-100 text-rose-800 border-rose-200'
+                        : 'bg-amber-100 text-amber-800 border-amber-200';
+
+                return `
+                    <div class="bg-white p-4 sm:p-5 rounded-2xl border ${isPending ? 'border-amber-300' : 'border-slate-200'} shadow-sm space-y-3">
+                        <div class="flex flex-wrap items-center justify-between gap-2">
+                            <div class="flex flex-wrap items-center gap-1.5">
+                                <span class="px-2.5 py-0.5 text-xs font-extrabold rounded-lg border ${statusBadge}">${r.status}</span>
+                                <span class="text-xs font-bold text-blue-700 bg-blue-50 px-2.5 py-0.5 rounded-lg">${formatDateTR(r.date)} • ${r.day}</span>
+                                <span class="text-xs font-bold text-slate-800 bg-slate-100 px-2.5 py-0.5 rounded-lg">${summary.fullText}</span>
+                            </div>
+                            <span class="text-xs font-bold text-slate-500"><i data-lucide="users" class="w-3.5 h-3.5 inline"></i> ${r.participants} Kişi</span>
+                        </div>
+
+                        <div>
+                            <h4 class="text-base font-extrabold text-slate-900">${escapeHTML(r.title)}</h4>
+                            <p class="text-xs text-slate-600 mt-0.5">Talep Eden: <strong>${escapeHTML(r.teacher)}</strong> • ${escapeHTML(r.purpose)}</p>
+                        </div>
+
+                        ${r.adminNote ? `
+                            <div class="p-3 rounded-xl text-xs ${r.status === 'Reddedildi' ? 'bg-rose-50 text-rose-800 border border-rose-200' : 'bg-emerald-50 text-emerald-900 border border-emerald-200'}">
+                                <strong>Yönetici Karar Notu (${escapeHTML(r.decidedBy || 'Admin')}):</strong> ${escapeHTML(r.adminNote)}
+                            </div>
+                        ` : ''}
+
+                        <!-- Admin Hızlı Karar Alanı -->
+                        ${userProfile.role === 'admin' && isPending ? `
+                            <div class="p-3 rounded-xl bg-amber-50/70 border border-amber-200 space-y-2">
+                                <input type="text" id="quick-admin-note-${r.id}" placeholder="Öğretmene iletilecek karar açıklaması (isteğe bağlı)..." class="w-full px-3 py-2 text-xs bg-white border border-amber-200 rounded-xl">
+                                <div class="grid grid-cols-2 gap-2">
+                                    <button onclick="processAdminDecision('${r.id}', 'Onaylandı')" class="py-2 px-3 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl flex items-center justify-center gap-1.5">
+                                        <i data-lucide="check-circle" class="w-4 h-4"></i> Onayla
+                                    </button>
+                                    <button onclick="processAdminDecision('${r.id}', 'Reddedildi')" class="py-2 px-3 text-xs font-bold text-white bg-rose-600 hover:bg-rose-700 rounded-xl flex items-center justify-center gap-1.5">
+                                        <i data-lucide="x-circle" class="w-4 h-4"></i> Reddet / Revizyon
+                                    </button>
+                                </div>
+                            </div>
+                        ` : ''}
+
+                        <div class="pt-2 border-t border-slate-100 flex items-center justify-between gap-2">
+                            <button onclick="openDetailModal('${r.id}')" class="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold text-blue-700 bg-blue-50 hover:bg-blue-100 rounded-xl">
+                                <i data-lucide="camera" class="w-4 h-4"></i> Detay, Mesajlar &amp; Fotoğraf Yükle (${mCount})
+                            </button>
+                            ${userProfile.role === 'admin' || isPending ? `
+                                <button onclick="deleteReservation('${r.id}')" class="px-3 py-2 text-xs font-bold text-rose-600 hover:bg-rose-50 rounded-xl">
+                                    Sil
+                                </button>
+                            ` : ''}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        window.processAdminDecision = async function (id, newStatus, presetNote = null) {
+            if (userProfile.role !== 'admin') {
+                showToast('Bu işlem için Admin modunda olmalısınız.', 'error');
+                return;
+            }
+            const item = reservations.find(r => r.id === id);
+            if (!item) return;
+
+            if (newStatus === 'Onaylandı') {
+                const conflict = reservations.find(other =>
+                    other.id !== id &&
+                    other.date === item.date &&
+                    other.status === 'Onaylandı' &&
+                    other.slotIds && other.slotIds.some(sId => item.slotIds.includes(sId))
+                );
+                if (conflict) {
+                    showToast(`Çakışma: "${conflict.title}" aynı saatte zaten onaylı!`, 'error');
+                    return;
+                }
+            }
+
+            const noteEl = document.getElementById(`quick-admin-note-${id}`) || document.getElementById('detail-admin-note');
+            const noteText = presetNote !== null ? presetNote : (noteEl ? noteEl.value.trim() : '');
+
+            const updatedLog = Array.isArray(item.auditLog) ? [...item.auditLog] : [];
+            updatedLog.push({
+                time: formatDateTimeNow(),
+                actor: userProfile.adminName,
+                role: 'Admin / Yönetici',
+                action: newStatus === 'Onaylandı' ? 'Onaylandı' : 'Reddedildi / Revizyon İstendi',
+                note: noteText || (newStatus === 'Onaylandı' ? 'Talep onaylandı.' : 'Talep uygun görülmedi.')
+            });
+
+            const updates = {
+                status: newStatus,
+                adminNote: noteText,
+                decidedBy: userProfile.adminName,
+                auditLog: updatedLog
+            };
+
+            if (isCloudReady && currentUser) {
+                await updateDoc(getPublicDoc('reservations', id), updates);
+            } else {
+                Object.assign(item, updates);
+                renderAll();
+            }
+
+            closeDetailModal();
+            showToast(newStatus === 'Onaylandı' ? 'Talep onaylandı ve tüm cihazlarda güncellendi.' : 'Talep reddedildi.', 'success');
+        };
+
+        // ==========================================
+        // 8. TALEP OLUŞTURMA & ÇOKLU DERS SAATİ
+        // ==========================================
+        function renderMultiSlotSelector() {
+            const grid = document.getElementById('multi-slot-grid');
+            const summaryEl = document.getElementById('selected-slots-summary');
+
+            grid.innerHTML = LESSON_SLOTS.map(slot => {
+                const isSelected = formSelectedSlots.includes(slot.id);
+                return `
+                    <button type="button" onclick="toggleFormSlot('${slot.id}')" class="p-2.5 rounded-xl border text-left transition-all ${
+                        isSelected
+                            ? 'bg-blue-600 border-blue-600 text-white shadow-sm'
+                            : 'bg-white border-slate-200 text-slate-700'
+                    }">
+                        <div class="flex items-center justify-between">
+                            <span class="text-xs font-extrabold">${slot.label}</span>
+                            <span class="text-[11px] font-bold">${isSelected ? '✓' : ''}</span>
+                        </div>
+                        <div class="text-[10px] mt-0.5 ${isSelected ? 'text-blue-100' : 'text-slate-400'}">
+                            ${slot.start}-${slot.end}
+                        </div>
+                    </button>
+                `;
+            }).join('');
+
+            if (formSelectedSlots.length === 0) {
+                summaryEl.textContent = 'En az 1 ders saati seçmelisiniz!';
+                summaryEl.className = 'text-xs font-bold text-rose-600';
+            } else {
+                summaryEl.textContent = formatSlotRangeSummary(formSelectedSlots).fullText;
+                summaryEl.className = 'text-xs font-bold text-blue-700';
+            }
+        }
+
+        window.toggleFormSlot = function (slotId) {
+            if (formSelectedSlots.includes(slotId)) {
+                formSelectedSlots = formSelectedSlots.filter(id => id !== slotId);
+            } else {
+                formSelectedSlots.push(slotId);
+                formSelectedSlots.sort((a, b) => Number(a) - Number(b));
+            }
+            renderMultiSlotSelector();
+            checkSlotConflict();
+        };
+
+        window.selectSlotRange = function (ids) {
+            formSelectedSlots = [...ids];
+            renderMultiSlotSelector();
+            checkSlotConflict();
+        };
+
+        window.openModal = function () {
+            document.getElementById('reservation-form').reset();
+            document.getElementById('edit-id').value = '';
+            document.getElementById('conflict-alert').classList.add('hidden');
+
+            const weekDates = getWeekDates(currentMonday);
+            const defaultDay = weekDates[selectedMobileDayIndex] || weekDates[0];
+            document.getElementById('form-date').value = defaultDay.iso;
+            document.getElementById('form-day').value = defaultDay.dayName;
+
+            const adminStatusBox = document.getElementById('admin-direct-status-box');
+            const submitBtn = document.getElementById('btn-submit-reservation');
+
+            if (userProfile.role === 'admin') {
+                document.getElementById('form-teacher').value = userProfile.adminName;
+                adminStatusBox.classList.remove('hidden');
+                document.getElementById('form-status').value = 'Onaylandı';
+                submitBtn.textContent = 'Doğrudan Onaylı Kaydet';
+            } else {
+                document.getElementById('form-teacher').value = userProfile.teacherName || '';
+                adminStatusBox.classList.add('hidden');
+                submitBtn.textContent = 'Talebi Onaya Gönder';
+            }
+
+            formSelectedSlots = ['1'];
+            renderMultiSlotSelector();
+            document.getElementById('reservation-modal').classList.remove('hidden');
+            checkSlotConflict();
+        };
+
+        window.openModalWithPreset = function (dateIso, dayName, slotId) {
+            openModal();
+            document.getElementById('form-date').value = dateIso;
+            document.getElementById('form-day').value = dayName;
+            formSelectedSlots = [String(slotId)];
+            renderMultiSlotSelector();
+            checkSlotConflict();
+        };
+
+        window.closeModal = function () {
+            document.getElementById('reservation-modal').classList.add('hidden');
+        };
+
+        window.syncDayFromDate = function () {
+            const dateVal = document.getElementById('form-date').value;
+            if (!dateVal) return;
+            const d = new Date(dateVal + 'T00:00:00');
+            const dayIdx = (d.getDay() + 6) % 7;
+            document.getElementById('form-day').value = DAYS_OF_WEEK[dayIdx];
+            checkSlotConflict();
+        };
+
+        window.checkSlotConflict = function () {
+            const dateVal = document.getElementById('form-date').value;
+            const status = userProfile.role === 'admin' ? document.getElementById('form-status').value : 'Onay Bekliyor';
+            const alertBox = document.getElementById('conflict-alert');
+            const alertMsg = document.getElementById('conflict-message');
+
+            if (status === 'Reddedildi' || formSelectedSlots.length === 0) {
+                alertBox.classList.add('hidden');
+                return false;
+            }
+
+            const overlapping = reservations.filter(r =>
+                r.date === dateVal &&
+                r.status === 'Onaylandı' &&
+                r.slotIds && r.slotIds.some(sId => formSelectedSlots.includes(sId))
+            );
+
+            if (overlapping.length > 0) {
+                const details = overlapping.map(c => `"${c.title}" (${c.slotIds.join(', ')}. Ders)`).join(', ');
+                alertMsg.textContent = `Seçtiğiniz saatlerde onaylı etkinlik mevcut: ${details}`;
+                alertBox.classList.remove('hidden');
+                return true;
+            } else {
+                alertBox.classList.add('hidden');
+                return false;
+            }
+        };
+
+        window.handleFormSubmit = async function (e) {
+            e.preventDefault();
+            if (formSelectedSlots.length === 0) {
+                showToast('Lütfen en az 1 ders saati seçiniz.', 'error');
+                return;
+            }
+
+            const dateVal = document.getElementById('form-date').value;
+            const dayVal = document.getElementById('form-day').value;
+            const teacher = document.getElementById('form-teacher').value.trim();
+            const participants = parseInt(document.getElementById('form-participants').value, 10);
+            const purpose = document.getElementById('form-purpose').value;
+            const title = document.getElementById('form-title').value.trim();
+            const notes = document.getElementById('form-notes').value.trim();
+            const equipment = Array.from(document.querySelectorAll('input[name="equipment"]:checked')).map(cb => cb.value);
+            const status = userProfile.role === 'admin' ? document.getElementById('form-status').value : 'Onay Bekliyor';
+
+            if (status === 'Onaylandı' && checkSlotConflict()) {
+                showToast('Çakışan onaylı etkinlik nedeniyle kaydedilemedi.', 'error');
+                return;
+            }
+
+            if (userProfile.role === 'teacher' && teacher) {
+                userProfile.teacherName = teacher;
+                saveLocalUserProfile();
+                syncRoleUI();
+            }
+
+            const newId = 'res-' + Date.now();
+            const newRecord = {
+                id: newId,
+                date: dateVal,
+                day: dayVal,
+                slotIds: [...formSelectedSlots].sort((a, b) => Number(a) - Number(b)),
+                teacher,
+                participants,
+                purpose,
+                title,
+                equipment,
+                notes,
+                status,
+                adminNote: status === 'Onaylandı' ? 'Yönetici tarafından doğrudan onaylı eklendi.' : '',
+                decidedBy: status === 'Onaylandı' ? userProfile.adminName : '',
+                auditLog: [
+                    {
+                        time: formatDateTimeNow(),
+                        actor: userProfile.role === 'admin' ? userProfile.adminName : teacher,
+                        role: userProfile.role === 'admin' ? 'Admin / Yönetici' : 'Talep Eden',
+                        action: status === 'Onaylandı' ? 'Doğrudan Onaylı Oluşturuldu' : 'Talep Oluşturuldu',
+                        note: notes || 'Rezervasyon talebi iletildi.'
+                    }
+                ]
+            };
+
+            if (isCloudReady && currentUser) {
+                await setDoc(getPublicDoc('reservations', newId), newRecord);
+            } else {
+                reservations.push(newRecord);
+                renderAll();
+            }
+
+            currentMonday = getMonday(new Date(dateVal + 'T00:00:00'));
+            selectedMobileDayIndex = (new Date(dateVal + 'T00:00:00').getDay() + 6) % 7;
+            closeModal();
+            showToast(
+                status === 'Onay Bekliyor'
+                    ? 'Talebiniz buluta kaydedildi ve Yönetici onayına sunuldu!'
+                    : 'Etkinlik takvime eklendi!',
+                'success'
+            );
+        };
+
+        // ==========================================
+        // 9. ETKİNLİK DETAYI, MESAJLAŞMA & KAMERA YÜKLEME
+        // ==========================================
+        window.openDetailModal = function (id) {
+            const r = reservations.find(item => item.id === id);
+            if (!r) return;
+
+            const summary = formatSlotRangeSummary(r.slotIds);
+            const isApproved = r.status === 'Onaylandı';
+            const isRejected = r.status === 'Reddedildi';
+            const eventMedia = mediaItems.filter(m => m.reservationId === r.id);
+            const auditItems = Array.isArray(r.auditLog) ? r.auditLog : [];
+            const headerBg = isApproved ? 'bg-slate-900' : isRejected ? 'bg-rose-800' : 'bg-amber-600';
+
+            const content = `
+                <div class="px-5 py-4 ${headerBg} text-white flex items-center justify-between shrink-0">
+                    <div class="min-w-0 pr-2">
+                        <div class="flex items-center gap-2">
+                            <span class="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded bg-white/20">${r.status}</span>
+                            <span class="text-xs text-white/80">${formatDateTR(r.date)} • ${r.day}</span>
+                        </div>
+                        <h3 class="text-base font-extrabold mt-1 truncate">${escapeHTML(r.title)}</h3>
+                    </div>
+                    <button onclick="closeDetailModal()" class="p-2 rounded-xl bg-white/15 text-white shrink-0">
+                        <i data-lucide="x" class="w-5 h-5"></i>
+                    </button>
+                </div>
+
+                <div class="p-5 space-y-4 overflow-y-auto">
+                    <!-- Özet Kartlar -->
+                    <div class="grid grid-cols-2 sm:grid-cols-3 gap-2.5 text-xs">
+                        <div class="p-3 rounded-xl bg-slate-50 border border-slate-200">
+                            <span class="text-[10px] font-bold text-slate-400 uppercase block">Ders Saati</span>
+                            <span class="font-extrabold text-blue-700 block mt-0.5">${summary.lessonText} (${summary.count} Ders)</span>
+                            <span class="text-[11px] text-slate-500">${summary.timeText}</span>
+                        </div>
+                        <div class="p-3 rounded-xl bg-slate-50 border border-slate-200">
+                            <span class="text-[10px] font-bold text-slate-400 uppercase block">Talep Eden</span>
+                            <span class="font-bold text-slate-800 block mt-0.5">${escapeHTML(r.teacher)}</span>
+                        </div>
+                        <div class="col-span-2 sm:col-span-1 p-3 rounded-xl bg-slate-50 border border-slate-200">
+                            <span class="text-[10px] font-bold text-slate-400 uppercase block">Katılımcı &amp; Tür</span>
+                            <span class="font-bold text-slate-800 block mt-0.5">${r.participants} Kişi • ${escapeHTML(r.purpose)}</span>
+                        </div>
+                    </div>
+
+                    <!-- Ekipmanlar -->
+                    ${r.equipment && r.equipment.length > 0 ? `
+                        <div class="flex flex-wrap gap-1.5">
+                            ${r.equipment.map(eq => `<span class="text-[11px] font-semibold px-2.5 py-1 rounded-lg bg-slate-100 text-slate-700">${escapeHTML(eq)}</span>`).join('')}
+                        </div>
+                    ` : ''}
+
+                    <!-- YÖNETİCİ KARAR PANELİ -->
+                    ${userProfile.role === 'admin' ? `
+                        <div class="p-3.5 rounded-2xl bg-amber-50 border border-amber-200 space-y-2.5">
+                            <span class="text-xs font-extrabold text-amber-900 block">Yönetici Kararı (${escapeHTML(userProfile.adminName)})</span>
+                            <textarea id="detail-admin-note" rows="2" placeholder="Öğretmene iletilecek onay veya red notu..." class="w-full px-3 py-2 text-xs bg-white border border-amber-200 rounded-xl">${escapeHTML(r.adminNote || '')}</textarea>
+                            <div class="grid grid-cols-2 gap-2">
+                                <button onclick="processAdminDecision('${r.id}', 'Onaylandı')" class="py-2.5 px-3 text-xs font-bold text-white bg-emerald-600 rounded-xl">✓ Onayla</button>
+                                <button onclick="processAdminDecision('${r.id}', 'Reddedildi')" class="py-2.5 px-3 text-xs font-bold text-white bg-rose-600 rounded-xl">✕ Reddet / Revizyon</button>
+                            </div>
+                        </div>
+                    ` : ''}
+
+                    <!-- KARŞILIKLI MESAJLAŞMA VE İŞLEM GEÇMİŞİ -->
+                    <div class="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 space-y-2.5">
+                        <span class="text-xs font-extrabold text-slate-700 block">Karşılıklı İşlem &amp; Mesaj Geçmişi</span>
+                        <div class="space-y-2 max-h-40 overflow-y-auto">
+                            ${auditItems.map(log => `
+                                <div class="p-2.5 rounded-xl bg-white border border-slate-200/80 text-xs">
+                                    <div class="flex justify-between text-[10px] font-bold">
+                                        <span class="text-blue-700">${escapeHTML(log.actor)} (${escapeHTML(log.action)})</span>
+                                        <span class="text-slate-400">${escapeHTML(log.time)}</span>
+                                    </div>
+                                    ${log.note ? `<p class="text-slate-600 mt-1">${escapeHTML(log.note)}</p>` : ''}
+                                </div>
+                            `).join('')}
+                        </div>
+                        <div class="flex gap-2 pt-1">
+                            <input type="text" id="audit-reply-input" placeholder="Mesaj veya açıklama yazın..." class="flex-1 px-3 py-2 text-xs bg-white border border-slate-200 rounded-xl">
+                            <button onclick="addAuditComment('${r.id}')" class="px-3.5 py-2 text-xs font-bold text-white bg-slate-900 rounded-xl">Gönder</button>
+                        </div>
+                    </div>
+
+                    <!-- TELEFON KAMERASI & GALERİDEN FOTOĞRAF/VİDEO YÜKLEME -->
+                    <div class="p-3.5 rounded-2xl bg-blue-50/60 border border-blue-200 space-y-3">
+                        <div class="flex items-center justify-between">
+                            <span class="text-xs font-extrabold text-slate-900 flex items-center gap-1.5">
+                                <i data-lucide="camera" class="w-4 h-4 text-blue-600"></i>
+                                Etkinlik Fotoğraf &amp; Video Arşivi (${eventMedia.length})
+                            </span>
+                        </div>
+
+                        <input type="text" id="media-caption-input" placeholder="Görsel açıklaması (Örn: Açılış konuşması)" class="w-full px-3 py-2 text-xs bg-white border border-blue-200 rounded-xl">
+
+                        <div class="grid grid-cols-2 gap-2">
+                            <!-- Doğrudan Telefon Kamerasını Aç -->
+                            <label class="py-2.5 px-3 bg-blue-600 active:bg-blue-700 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 cursor-pointer shadow-sm">
+                                <i data-lucide="camera" class="w-4 h-4"></i>
+                                <span>Kamerayla Çek</span>
+                                <input type="file" accept="image/*" capture="environment" onchange="handleCloudMediaUpload(event, '${r.id}')" class="hidden">
+                            </label>
+
+                            <!-- Galeri / Dosyadan Seç -->
+                            <label class="py-2.5 px-3 bg-white border border-blue-300 text-blue-700 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 cursor-pointer">
+                                <i data-lucide="image-plus" class="w-4 h-4"></i>
+                                <span>Galeriden Seç</span>
+                                <input type="file" multiple accept="image/*,video/*" onchange="handleCloudMediaUpload(event, '${r.id}')" class="hidden">
+                            </label>
+                        </div>
+
+                        ${eventMedia.length > 0 ? `
+                            <div class="grid grid-cols-2 sm:grid-cols-3 gap-2.5 pt-1">
+                                ${eventMedia.map(m => renderMediaCardHTML(m)).join('')}
+                            </div>
+                        ` : ''}
+                    </div>
+                </div>
+            `;
+
+            document.getElementById('detail-modal-content').innerHTML = content;
+            document.getElementById('detail-modal').classList.remove('hidden');
+            lucide.createIcons();
+        };
+
+        window.closeDetailModal = function () {
+            document.getElementById('detail-modal').classList.add('hidden');
+        };
+
+        window.addAuditComment = async function (id) {
+            const input = document.getElementById('audit-reply-input');
+            const msg = input ? input.value.trim() : '';
+            if (!msg) return;
+
+            const item = reservations.find(r => r.id === id);
+            if (!item) return;
+
+            const updatedLog = Array.isArray(item.auditLog) ? [...item.auditLog] : [];
+            updatedLog.push({
+                time: formatDateTimeNow(),
+                actor: userProfile.role === 'admin' ? userProfile.adminName : (userProfile.teacherName || 'Öğretmen'),
+                role: userProfile.role === 'admin' ? 'Admin / Yönetici' : 'Talep Eden',
+                action: 'Mesaj',
+                note: msg
+            });
+
+            if (isCloudReady && currentUser) {
+                await updateDoc(getPublicDoc('reservations', id), { auditLog: updatedLog });
+            } else {
+                item.auditLog = updatedLog;
+            }
+            openDetailModal(id);
+            showToast('Mesajınız gönderildi.', 'success');
+        };
+
+        // Görsel Sıkıştırma (Mobil kameradan çekilen yüksek çözünürlüklü fotoğrafları bulut hızı için optimize eder)
+        function compressImageToDataURL(file, maxWidth = 1024, quality = 0.78) {
+            return new Promise((resolve) => {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    const img = new Image();
+                    img.onload = () => {
+                        const canvas = document.createElement('canvas');
+                        let width = img.width;
+                        let height = img.height;
+                        if (width > maxWidth) {
+                            height = Math.round((height * maxWidth) / width);
+                            width = maxWidth;
+                        }
+                        canvas.width = width;
+                        canvas.height = height;
+                        const ctx = canvas.getContext('2d');
+                        ctx.drawImage(img, 0, 0, width, height);
+                        resolve(canvas.toDataURL('image/jpeg', quality));
+                    };
+                    img.src = e.target.result;
+                };
+                reader.readAsDataURL(file);
+            });
+        }
+
+        window.handleCloudMediaUpload = async function (event, reservationId) {
+            const files = Array.from(event.target.files || []);
+            if (files.length === 0) return;
+
+            const captionInput = document.getElementById('media-caption-input');
+            const customCaption = (captionInput && captionInput.value.trim()) || '';
+            const uploaderName = userProfile.role === 'admin' ? userProfile.adminName : (userProfile.teacherName || 'Öğretmen');
+
+            showToast('Medya buluta yükleniyor...', 'info');
+            let uploadedCount = 0;
+
+            for (const file of files) {
+                let dataUrl = '';
+                let isVideo = file.type.startsWith('video/');
+
+                if (isVideo) {
+                    if (file.size > 850 * 1024) {
+                        showToast(`"${file.name}" video boyutu bulut sınırı (850KB) üzerinde, kısa klip seçin.`, 'error');
+                        continue;
+                    }
+                    dataUrl = await new Promise((res) => {
+                        const r = new FileReader();
+                        r.onload = (ev) => res(ev.target.result);
+                        r.readAsDataURL(file);
+                    });
+                } else if (file.type.startsWith('image/')) {
+                    dataUrl = await compressImageToDataURL(file, 1024, 0.78);
+                } else {
+                    continue;
+                }
+
+                const mediaId = 'media-' + Date.now() + '-' + Math.random().toString(36).slice(2, 6);
+                const record = {
+                    id: mediaId,
+                    reservationId,
+                    fileName: isVideo ? file.name : file.name.replace(/\.[^/.]+$/, '') + '.jpg',
+                    fileType: isVideo ? file.type : 'image/jpeg',
+                    caption: customCaption || file.name,
+                    uploadedBy: uploaderName,
+                    uploadedAt: formatDateTimeNow(),
+                    dataUrl
+                };
+
+                if (isCloudReady && currentUser) {
+                    await setDoc(getPublicDoc('event_media', mediaId), record);
+                } else {
+                    mediaItems.push(record);
+                }
+                uploadedCount++;
+            }
+
+            if (uploadedCount > 0) {
+                renderAll();
+                openDetailModal(reservationId);
+                showToast(`${uploadedCount} medya bulut arşivine kaydedildi!`, 'success');
+            }
+        };
+
+        window.handleDeleteMedia = async function (mediaId) {
+            const target = mediaItems.find(m => m.id === mediaId);
+            if (!target) return;
+
+            if (isCloudReady && currentUser) {
+                await deleteDoc(getPublicDoc('event_media', mediaId));
+            } else {
+                mediaItems = mediaItems.filter(m => m.id !== mediaId);
+                renderAll();
+            }
+
+            if (!document.getElementById('detail-modal').classList.contains('hidden')) {
+                openDetailModal(target.reservationId);
+            }
+            showToast('Medya silindi.', 'info');
+        };
+
+        function renderMediaCardHTML(m) {
+            const isVideo = m.fileType && m.fileType.startsWith('video/');
+            return `
+                <div class="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
+                    <div onclick="openLightbox('${m.id}')" class="relative aspect-video bg-slate-900 cursor-pointer flex items-center justify-center overflow-hidden">
+                        ${isVideo
+                            ? `<video src="${m.dataUrl}" class="w-full h-full object-cover"></video><span class="absolute px-2 py-0.5 bg-black/70 text-white text-[10px] font-bold rounded">▶ VİDEO</span>`
+                            : `<img src="${m.dataUrl}" alt="${escapeHTML(m.fileName)}" class="w-full h-full object-cover">`
+                        }
+                    </div>
+                    <div class="p-2 flex items-center justify-between gap-1">
+                        <span class="text-[10px] font-bold text-slate-700 truncate">${escapeHTML(m.caption || m.fileName)}</span>
+                        <button onclick="handleDeleteMedia('${m.id}')" class="text-[10px] font-bold text-rose-600 shrink-0">Sil</button>
+                    </div>
+                </div>
+            `;
+        }
+
+        window.openLightbox = function (mediaId) {
+            const m = mediaItems.find(item => item.id === mediaId);
+            if (!m) return;
+            const isVideo = m.fileType && m.fileType.startsWith('video/');
+            document.getElementById('lightbox-media-wrapper').innerHTML = isVideo
+                ? `<video src="${m.dataUrl}" controls autoplay class="max-h-[72vh] rounded-xl"></video>`
+                : `<img src="${m.dataUrl}" class="max-h-[72vh] object-contain rounded-xl">`;
+            document.getElementById('lightbox-caption').innerHTML = `
+                <p class="text-sm font-bold">${escapeHTML(m.caption || m.fileName)}</p>
+                <p class="text-xs text-slate-300">Yükleyen: ${escapeHTML(m.uploadedBy)} • ${escapeHTML(m.uploadedAt || '')}</p>
+            `;
+            document.getElementById('lightbox-modal').classList.remove('hidden');
+        };
+
+        window.closeLightbox = function (event, force = false) {
+            if (force || event.target.id === 'lightbox-modal') {
+                document.getElementById('lightbox-media-wrapper').innerHTML = '';
+                document.getElementById('lightbox-modal').classList.add('hidden');
+            }
+        };
+
+        // ==========================================
+        // 10. RAPORLAMA (EXCEL .XLSX, WORD .DOC, PDF) & ZIP ARŞİV
+        // ==========================================
+        window.applyReportPreset = function (preset) {
+            const now = new Date();
+            const startInput = document.getElementById('rep-date-start');
+            const endInput = document.getElementById('rep-date-end');
+
+            if (preset === 'today') {
+                const iso = formatDateISO(now);
+                startInput.value = iso;
+                endInput.value = iso;
+            } else if (preset === 'week') {
+                const mon = getMonday(now);
+                const sun = new Date(mon);
+                sun.setDate(mon.getDate() + 6);
+                startInput.value = formatDateISO(mon);
+                endInput.value = formatDateISO(sun);
+            } else if (preset === 'month') {
+                startInput.value = formatDateISO(new Date(now.getFullYear(), now.getMonth(), 1));
+                endInput.value = formatDateISO(new Date(now.getFullYear(), now.getMonth() + 1, 0));
+            } else if (preset === 'year') {
+                startInput.value = formatDateISO(new Date(now.getFullYear(), 0, 1));
+                endInput.value = formatDateISO(new Date(now.getFullYear(), 11, 31));
+            } else {
+                startInput.value = '';
+                endInput.value = '';
+            }
+            renderReportsView();
+        };
+
+        function getFilteredReportReservations() {
+            const start = document.getElementById('rep-date-start')?.value || '';
+            const end = document.getElementById('rep-date-end')?.value || '';
+            const status = document.getElementById('rep-status')?.value || 'ALL';
+            const purpose = document.getElementById('rep-purpose')?.value || 'ALL';
+
+            return reservations
+                .filter(r => {
+                    const matchStart = !start || r.date >= start;
+                    const matchEnd = !end || r.date <= end;
+                    const matchStatus = status === 'ALL' || r.status === status;
+                    const matchPurpose = purpose === 'ALL' || r.purpose === purpose;
+                    return matchStart && matchEnd && matchStatus && matchPurpose;
+                })
+                .sort((a, b) => a.date.localeCompare(b.date));
+        }
+
+        function getReportRangeDescription() {
+            const start = document.getElementById('rep-date-start')?.value;
+            const end = document.getElementById('rep-date-end')?.value;
+            if (start && end) return `${formatDateTR(start)} – ${formatDateTR(end)}`;
+            if (start) return `${formatDateTR(start)} Sonrası`;
+            if (end) return `${formatDateTR(end)} Öncesi`;
+            return 'Tüm Zamanlar';
+        }
+
+        window.renderReportsView = function () {
+            const filtered = getFilteredReportReservations();
+            const approvedCount = filtered.filter(r => r.status === 'Onaylandı').length;
+            const totalHours = filtered.reduce((s, r) => s + (r.slotIds ? r.slotIds.length : 1), 0);
+            const totalParticipants = filtered.reduce((s, r) => s + (parseInt(r.participants, 10) || 0), 0);
+
+            document.getElementById('rep-kpi-events').textContent = filtered.length;
+            document.getElementById('rep-kpi-approved').textContent = approvedCount;
+            document.getElementById('rep-kpi-hours').textContent = `${totalHours} Ders`;
+            document.getElementById('rep-kpi-participants').textContent = totalParticipants.toLocaleString('tr-TR');
+            document.getElementById('rep-table-count').textContent = `${filtered.length} Kayıt`;
+            document.getElementById('rep-active-range-label').textContent = getReportRangeDescription();
+
+            const tbody = document.getElementById('rep-summary-tbody');
+            tbody.innerHTML = filtered.length === 0
+                ? '<tr><td colspan="6" class="py-6 text-center text-slate-400">Seçilen aralıkta kayıt bulunamadı.</td></tr>'
+                : filtered.map(r => {
+                    const summary = formatSlotRangeSummary(r.slotIds);
+                    return `
+                        <tr>
+                            <td class="py-2.5 px-3 font-semibold text-slate-800 whitespace-nowrap">${formatDateTR(r.date)} (${r.day})</td>
+                            <td class="py-2.5 px-3 text-slate-700 whitespace-nowrap">${summary.lessonText} (${summary.timeText})</td>
+                            <td class="py-2.5 px-3"><strong>${escapeHTML(r.title)}</strong><br><span class="text-[10px] text-slate-500">${escapeHTML(r.purpose)}</span></td>
+                            <td class="py-2.5 px-3 text-slate-700">${escapeHTML(r.teacher)}</td>
+                            <td class="py-2.5 px-3 text-center font-bold">${r.participants}</td>
+                            <td class="py-2.5 px-3 font-bold">${r.status}</td>
+                        </tr>
+                    `;
+                }).join('');
+
+            // Arşiv Galerisi
+            document.getElementById('archive-total-count').textContent = mediaItems.length;
+            const gallery = document.getElementById('archive-gallery-container');
+            if (mediaItems.length === 0) {
+                gallery.innerHTML = `<p class="text-xs text-slate-400 text-center py-6 bg-slate-50 rounded-2xl">Henüz yüklenmiş etkinlik fotoğrafı veya videosu bulunmuyor.</p>`;
+            } else {
+                const grouped = {};
+                mediaItems.forEach(m => {
+                    if (!grouped[m.reservationId]) grouped[m.reservationId] = [];
+                    grouped[m.reservationId].push(m);
+                });
+                gallery.innerHTML = Object.entries(grouped).map(([resId, items]) => {
+                    const res = reservations.find(r => r.id === resId) || { title: 'Etkinlik', date: '' };
+                    return `
+                        <div class="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 space-y-2.5">
+                            <div class="flex items-center justify-between">
+                                <span class="text-xs font-extrabold text-slate-900">${formatDateTR(res.date)} • ${escapeHTML(res.title)}</span>
+                                <span class="text-[11px] font-bold text-blue-700">${items.length} Dosya</span>
+                            </div>
+                            <div class="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                                ${items.map(m => renderMediaCardHTML(m)).join('')}
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+            }
+        };
+
+        // Gerçek Excel (.xlsx) İndir
+        window.exportToExcelXLSX = function () {
+            const filtered = getFilteredReportReservations();
+            if (filtered.length === 0) {
+                showToast('Dışa aktarılacak kayıt bulunamadı.', 'error');
+                return;
+            }
+            const rows = filtered.map((r, i) => {
+                const summary = formatSlotRangeSummary(r.slotIds);
+                return {
+                    'Sıra': i + 1,
+                    'Tarih': formatDateTR(r.date),
+                    'Gün': r.day,
+                    'Ders Saatleri': summary.lessonText,
+                    'Zaman Aralığı': summary.timeText,
+                    'Toplam Ders': summary.count,
+                    'Sorumlu Öğretmen': r.teacher,
+                    'Kullanım Amacı': r.purpose,
+                    'Etkinlik Adı': r.title,
+                    'Katılımcı': Number(r.participants) || 0,
+                    'Ekipmanlar': (r.equipment || []).join(', '),
+                    'Onay Durumu': r.status,
+                    'Yönetici Karar Notu': r.adminNote || '-'
+                };
+            });
+            const wb = XLSX.utils.book_new();
+            const ws = XLSX.utils.json_to_sheet(rows);
+            XLSX.utils.book_append_sheet(wb, ws, 'Konferans Salonu Raporu');
+            XLSX.writeFile(wb, `Validebag_FL_Salon_Raporu_${formatDateISO(new Date())}.xlsx`);
+            showToast('Excel (.xlsx) raporu indirildi.', 'success');
+        };
+
+        // Kurumsal Antetli Word (.doc) İndir
+        window.exportToWordDOC = function () {
+            const filtered = getFilteredReportReservations();
+            if (filtered.length === 0) {
+                showToast('Dışa aktarılacak kayıt bulunamadı.', 'error');
+                return;
+            }
+            const preparer = userProfile.role === 'admin' ? userProfile.adminName : (userProfile.teacherName || 'Öğretmen');
+            const rowsHTML = filtered.map((r, i) => {
+                const summary = formatSlotRangeSummary(r.slotIds);
+                return `
+                    <tr>
+                        <td style="border:1px solid #cbd5e1; padding:6px;">${i + 1}</td>
+                        <td style="border:1px solid #cbd5e1; padding:6px;">${formatDateTR(r.date)} (${r.day})</td>
+                        <td style="border:1px solid #cbd5e1; padding:6px;">${summary.lessonText} (${summary.timeText})</td>
+                        <td style="border:1px solid #cbd5e1; padding:6px;"><strong>${escapeHTML(r.title)}</strong><br/>${escapeHTML(r.purpose)}</td>
+                        <td style="border:1px solid #cbd5e1; padding:6px;">${escapeHTML(r.teacher)}</td>
+                        <td style="border:1px solid #cbd5e1; padding:6px; text-align:center;">${r.participants}</td>
+                        <td style="border:1px solid #cbd5e1; padding:6px;">${r.status}</td>
+                    </tr>
+                `;
+            }).join('');
+
+            const docHTML = `
+                <html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word'>
+                <head><meta charset="utf-8"><title>Validebağ Fen Lisesi Rapor</title></head>
+                <body style="font-family:Calibri,Arial,sans-serif;">
+                    <div style="text-align:center; border-bottom:2px solid #0f172a; padding-bottom:10px; margin-bottom:15px;">
+                        <p style="margin:0; font-weight:bold;">T.C. MİLLÎ EĞİTİM BAKANLIĞI</p>
+                        <h2 style="margin:4px 0;">VALİDEBAĞ FEN LİSESİ MÜDÜRLÜĞÜ</h2>
+                        <p style="margin:0;">Konferans Salonu Etkinlik ve Kullanım Raporu (${getReportRangeDescription()})</p>
+                    </div>
+                    <table style="width:100%; border-collapse:collapse; font-size:10pt;">
+                        <thead>
+                            <tr style="background:#0f172a; color:#fff;">
+                                <th style="border:1px solid #0f172a; padding:6px;">#</th>
+                                <th style="border:1px solid #0f172a; padding:6px;">Tarih</th>
+                                <th style="border:1px solid #0f172a; padding:6px;">Ders Saati</th>
+                                <th style="border:1px solid #0f172a; padding:6px;">Etkinlik</th>
+                                <th style="border:1px solid #0f172a; padding:6px;">Sorumlu Öğretmen</th>
+                                <th style="border:1px solid #0f172a; padding:6px;">Katılımcı</th>
+                                <th style="border:1px solid #0f172a; padding:6px;">Durum</th>
+                            </tr>
+                        </thead>
+                        <tbody>${rowsHTML}</tbody>
+                    </table>
+                    <table style="width:100%; margin-top:40px; text-align:center;">
+                        <tr>
+                            <td><strong>Düzenleyen</strong><br/>${escapeHTML(preparer)}<br/><br/>İmza</td>
+                            <td><strong>TASDİK OLUNUR</strong><br/>Okul Müdürü / Müdür Yardımcısı<br/><br/>Mühür ve İmza</td>
+                        </tr>
+                    </table>
+                </body></html>
+            `;
+            const blob = new Blob(['\ufeff', docHTML], { type: 'application/msword;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `Validebag_FL_Salon_Raporu_${formatDateISO(new Date())}.doc`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            showToast('Resmi Word (.doc) raporu indirildi.', 'success');
+        };
+
+        // PDF Rapor İndir
+        window.exportToPDF = function () {
+            const filtered = getFilteredReportReservations();
+            if (filtered.length === 0) {
+                showToast('PDF oluşturulacak kayıt bulunamadı.', 'error');
+                return;
+            }
+            const headerEl = document.getElementById('print-official-header');
+            const footerEl = document.getElementById('print-official-footer');
+            document.getElementById('print-date-stamp').textContent = formatDateTimeNow();
+            document.getElementById('print-range-stamp').textContent = getReportRangeDescription();
+            document.getElementById('print-preparer-name').textContent = userProfile.role === 'admin' ? userProfile.adminName : (userProfile.teacherName || 'Öğretmen');
+
+            headerEl.classList.remove('hidden');
+            footerEl.classList.remove('hidden');
+            const wrapper = document.createElement('div');
+            wrapper.style.padding = '12px';
+            wrapper.style.background = '#ffffff';
+            wrapper.appendChild(headerEl.cloneNode(true));
+            wrapper.appendChild(document.getElementById('pdf-export-area').cloneNode(true));
+            headerEl.classList.add('hidden');
+            footerEl.classList.add('hidden');
+
+            html2pdf().set({
+                margin: 8,
+                filename: `Validebag_FL_Salon_Raporu_${formatDateISO(new Date())}.pdf`,
+                image: { type: 'jpeg', quality: 0.98 },
+                html2canvas: { scale: 2 },
+                jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' }
+            }).from(wrapper).save().then(() => {
+                showToast('PDF raporu indirildi.', 'success');
+            });
+        };
+
+        // Tüm Görselleri ZIP Olarak Arşivle
+        window.downloadAllArchiveAsZip = async function () {
+            if (mediaItems.length === 0) {
+                showToast('Arşivde indirilecek medya bulunmuyor.', 'error');
+                return;
+            }
+            const btn = document.getElementById('btn-download-zip');
+            btn.disabled = true;
+            showToast('ZIP arşivi hazırlanıyor...', 'info');
+
+            try {
+                const zip = new JSZip();
+                let summaryTxt = `VALİDEBAĞ FEN LİSESİ - ETKİNLİK MEDYA ARŞİVİ\nOluşturma: ${formatDateTimeNow()}\n\n`;
+
+                const grouped = {};
+                mediaItems.forEach(m => {
+                    if (!grouped[m.reservationId]) grouped[m.reservationId] = [];
+                    grouped[m.reservationId].push(m);
+                });
+
+                Object.entries(grouped).forEach(([resId, files]) => {
+                    const res = reservations.find(r => r.id === resId);
+                    const folderName = `${res ? res.date : 'Tarihsiz'}_${sanitizeFileName(res ? res.title : 'Etkinlik')}`;
+                    const folder = zip.folder(folderName);
+                    summaryTxt += `Klasör: ${folderName}/ (${res ? res.teacher : '-'})\n`;
+
+                    files.forEach((m, idx) => {
+                        const base64Data = m.dataUrl.split(',')[1];
+                        const safeFile = `${idx + 1}_${sanitizeFileName(m.fileName)}`;
+                        folder.file(safeFile, base64Data, { base64: true });
+                        summaryTxt += `  - ${safeFile}: ${m.caption || '-'}\n`;
+                    });
+                    summaryTxt += `\n`;
+                });
+
+                zip.file('Etkinlik_Ozet_Raporu.txt', summaryTxt);
+                const blob = await zip.generateAsync({ type: 'blob' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `Validebag_FL_Medya_Arsivi_${formatDateISO(new Date())}.zip`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+                showToast('Tüm medya arşivi ZIP olarak indirildi.', 'success');
+            } finally {
+                btn.disabled = false;
+            }
+        };
+
+        // ==========================================
+        // 11. NAVİGASYON & YARDIMCI FONKSİYONLAR
+        // ==========================================
+        window.switchView = function (view) {
+            activeView = view;
+            ['schedule', 'approvals', 'reports'].forEach(v => {
+                const el = document.getElementById(`view-${v}`);
+                const sideTab = document.getElementById(`side-tab-${v}`);
+                const mobTab = document.getElementById(`mob-tab-${v}`);
+
+                if (el) el.classList.toggle('hidden', v !== view);
+                if (sideTab) {
+                    sideTab.className = v === view
+                        ? 'w-full flex items-center justify-between px-3.5 py-2.5 text-sm font-bold rounded-xl bg-blue-50 text-blue-700 transition-colors'
+                        : 'w-full flex items-center justify-between px-3.5 py-2.5 text-sm font-semibold rounded-xl text-slate-600 hover:bg-slate-50 transition-colors';
+                }
+                if (mobTab) {
+                    mobTab.className = v === view
+                        ? 'relative flex flex-col items-center justify-center gap-1 text-blue-600 font-bold transition-colors'
+                        : 'relative flex flex-col items-center justify-center gap-1 text-slate-500 font-medium transition-colors';
+                }
+            });
+            lucide.createIcons();
+        };
+
+        window.changeWeek = function (delta) {
+            currentMonday.setDate(currentMonday.getDate() + delta * 7);
+            renderAll();
+        };
+
+        window.goToToday = function () {
+            currentMonday = getMonday(new Date());
+            selectedMobileDayIndex = (new Date().getDay() + 6) % 7;
+            renderAll();
+        };
+
+        window.selectMobileDay = function (idx) {
+            selectedMobileDayIndex = idx;
+            renderMobileDayStrip();
+            renderMobileDailySchedule();
+            lucide.createIcons();
+        };
+
+        window.deleteReservation = async function (id) {
+            if (isCloudReady && currentUser) {
+                await deleteDoc(getPublicDoc('reservations', id));
+            } else {
+                reservations = reservations.filter(r => r.id !== id);
+                renderAll();
+            }
+            closeDetailModal();
+            showToast('Kayıt silindi.', 'info');
+        };
+
+        function sanitizeFileName(name) {
+            return String(name)
+                .replace(/ğ/g, 'g').replace(/Ğ/g, 'G')
+                .replace(/ü/g, 'u').replace(/Ü/g, 'U')
+                .replace(/ş/g, 's').replace(/Ş/g, 'S')
+                .replace(/ı/g, 'i').replace(/İ/g, 'I')
+                .replace(/ö/g, 'o').replace(/Ö/g, 'O')
+                .replace(/ç/g, 'c').replace(/Ç/g, 'C')
+                .replace(/[^a-zA-Z0-9._-]/g, '_')
+                .slice(0, 50);
+        }
+
+        function showToast(message, type = 'info') {
+            const container = document.getElementById('toast-container');
+            const colors = {
+                success: 'bg-emerald-600 text-white',
+                error: 'bg-rose-600 text-white',
+                info: 'bg-slate-900 text-white'
+            };
+            const toast = document.createElement('div');
+            toast.className = `pointer-events-auto px-4 py-3 rounded-2xl shadow-xl text-xs font-bold flex items-center justify-center text-center transition-all duration-300 ${colors[type] || colors.info}`;
+            toast.textContent = message;
+            container.appendChild(toast);
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                setTimeout(() => toast.remove(), 300);
+            }, 3200);
+        }
+
+        function escapeHTML(str) {
+            if (!str) return '';
+            return String(str)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#039;');
+        }
+    </script>
+</body>
+</html>
